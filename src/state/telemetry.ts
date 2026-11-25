@@ -7,6 +7,7 @@
 
 import { useSyncExternalStore } from 'react'
 import type { AircraftId } from '../config/aircraftCatalog'
+import type { GroundView } from '../game/groundOps'
 import type { ChallengeProgress, LessonView } from '../game/types'
 import type { Vec3 } from '../simulation/types'
 
@@ -65,6 +66,11 @@ export interface TelemetrySnapshot {
   lesson: LessonView | null
   /** The most recent touchdown this flight: sink rate (m/s, positive) and when (sim s). */
   touchdown: { sink: number; simTime: number } | null
+  /** Engine start progress, 0 when off or running. */
+  engineStart: number
+  parkingBrake: boolean
+  /** Gate departure state (phase, ATC, checklist, taxi guidance); null in other modes. */
+  ground: GroundView | null
 }
 
 export interface NavInfo {
@@ -117,6 +123,9 @@ export const INITIAL_TELEMETRY: Readonly<TelemetrySnapshot> = deepFreeze({
   reverse: 0,
   lesson: null,
   touchdown: null,
+  engineStart: 0,
+  parkingBrake: false,
+  ground: null,
 })
 
 function deepFreeze<T extends object>(obj: T): T {

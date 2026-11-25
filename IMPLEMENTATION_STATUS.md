@@ -87,6 +87,61 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 - Every take-off and landing lesson is completed end-to-end by a coach-following scripted student (512 tests).
 - Phase 4 (off-runway crash rule) is on hold.
 
+## Visual upgrade, Phase 0 and 1 (cockpit)
+- **F3 stats overlay** (`src/session/PerfOverlay.tsx`): fps, 1% low, worst frame, draw calls, triangles, geometries, textures, heap.
+  First software-rendered reading (headless, so only a floor): ~98-120 draws, ~470k triangles.
+- **3D flight deck** (`src/world/cockpit/`), cockpit view only. Three styles from `cockpitSpec.ts`:
+  light (trainer: six round gauges), airliner (A220, A350, Global 8000: PFD, EICAS, MCP strip, overhead, pedestal) and fighter (F-22: HUD, three MFDs, canopy arches).
+  Screens are 2D-canvas textures redrawn when a new telemetry snapshot arrives (~30 Hz); yoke, stick and throttle levers follow the controls.
+- **Head** (`headMotion.ts`, `CameraRig.tsx`): sags under g, bumps on touchdown, drag with the mouse to look around (140° yaw), springs back on release. Cockpit FOV 78 → 72.
+- The flat SVG instrument overlay is hidden in the cockpit view (the 3D deck replaces it).
+- Fixed: the A220's eye point sat 2 cm above the fuselage crown, so its skin showed as a grey polygon across the view. Eye y 1.2 → 1.0 (test: airliner eye points are inside the envelope).
+- Cockpit builder must create its meshes inside an effect: StrictMode's mount/unmount/remount disposes a `useMemo`'d deck.
+- Known gaps: the cockpits are generic (not per-type panels), no night panel lighting, no ND / map display, instruments read `settings.units`.
+
+### Performance pass and cockpit v2
+- **Measured first** (dev-only `window.__flysim` hook + a triangle census of the visible scene): trees and clouds were ~75% of the triangles; terrain was the cheap part.
+  Trees were one un-culled instanced mesh per type (every tree within 4-6 km at 70-140 triangles, including those behind the camera, plus again in the shadow pass); clouds were 252-triangle spheres.
+- **Fixed:** far trees use 8-10 triangle shapes (near ring 700 m keeps the detailed model and the shadows), far trees outside the view cone are not written at all (rewritten when the view turns 8.6 degrees), clouds are 120-triangle spheres.
+  Result (1280x720, same scene): medium 468k -> 159k triangles (-66%), high 729k -> 224k (-69%). Rules and tests in `src/world/terrain/treeLod.ts`.
+- **WebGPU was not used:** the terrain, water, sky and airport materials are custom GLSL, which WebGPURenderer cannot run without a rewrite to TSL, and the cost was triangle count, not the API.
+- Not done, may be worth testing on real hardware: `logarithmicDepthBuffer` (disables early-z) vs a reversed depth buffer, MSAA at dpr 2.
+- **Cockpit v2:** switch-bank and avionics textures (sized to their planes), screen bezels, slim glare-shield, round pillars, windscreen header, HUD glass tint, smaller levers.
+
+## Phase 2 (started): AI traffic
+- `src/world/traffic/`: `trafficPlan.ts` (pure, deterministic flight legs between airports: line up, roll, climb with terrain clearance, 3 degree approach, touchdown, stop; arcs sized for ~32 degrees of bank; runway ends chosen to face the direction of travel),
+  `trafficModels.ts` (measured scale/centre/ground offset of each glTF), `TrafficFleet.tsx` (loads the models, moves them; hidden beyond fog distance and while paused).
+  Count by quality: low 2, medium 5, high 8. They are scenery only: no physics, no collision with the player.
+- Models: A320, B737, B787, A350, A380 from amvlab (CC BY 4.0), in `public/models/traffic/` with `LICENSE.txt` and `CREDITS.md`. Gear is baked into each mesh, so it stays down in flight.
+- Dev only: `window.__flysimTraffic` lets a script pin aircraft in front of the camera to inspect them.
+
+### Graphics pass 2 and cockpit v3
+- **Cockpit rebuilt as a closed room** (floor, ceiling, back/side/front walls, openings only at the windows) after the v2 deck showed the world through gaps under the dash. Static parts are merged per material (draw calls per deck under 40); soft interior light from a `RoomEnvironment` prefiltered map (`CockpitModel.tsx`); quiet switch-bank textures instead of the noisy grid.
+- **Clouds** are camera-facing sprites with a lit highlight offset towards the sun and a shaded base (2 triangles each, was 120); correct under the log depth buffer and fog (`Clouds.tsx`).
+- **Terrain** (`terrainMaterial.ts`): a field patchwork with hedgerows on flat lowland (kept clear of airfields), micro-relief from the noise, and a distance-scaled grass speckle (cells stay ~2-3 px wide, stepping by octave like mipmaps). Measured fine detail on the near grass 0.65 -> 2.3 (mean neighbour-pixel difference, 0-255). Far trees are lighter so they stop reading as black specks.
+- `window.__flysim` / `__flysimTraffic` are dev-only hooks used by the profiling and screenshot scripts.
+
+## A320-200 (first new playable aircraft)
+- `src/config/aircraft/a320.ts`, catalog entry, procedural model (`transport.ts`, sharklets, CFM56 nacelles, red-tail generic livery), airliner cockpit, lessons, autopilot tuning, hangar card.
+- Game weight 62,400 kg (80 % of MTOW). Measured against the published figures: take-off field at MTOW 78 t = 2,160 m (published ~2,090 m, +3 %), clean stall 69 m/s EAS, cruise Mach 0.779 at 11 km, approach 68 m/s. Flaps use the shared 4-detent lever (UP / 1 / 2 / FULL, 35 degrees at full).
+- Added to every parametrised aircraft test (types, landing, field landing, atmosphere, models) plus an A320 block in `airliners.test.ts`.
+
+## Ground operations, part 1: gate departure
+- **Engine start / shutdown** in the flight model (`startEngines`, `stopEngines`, `engineStartProgress`): about 30 s on a jet (N1 rises through the start, no thrust until it lights), 3 s on the piston; a shutdown only on the ground below 3 m/s. Keys: `N` engines, `K` parking brake.
+- **Gate Departure mode** (`game/groundOps.ts`): spawn parked cold and dark on the apron stand, taxi route planner (stand -> taxiway -> connector -> hold-short -> line-up; verified on all 20 primary runway ends), phase machine with ATC calls and an auto-checked 6-item checklist, speed and runway-incursion warnings. A gate departure always uses the primary runway (asking for a secondary-runway end uses the primary end that points the same way).
+- **UI/world:** `GroundOpsPanel` (ATC, checklist, taxi distance and arrow, start progress), green centreline lights and a red stop bar (`TaxiRoute.tsx`).
+- **Not built yet:** pushback, refuelling and boarding, weight and balance from fuel and passengers, taxiing around other traffic, ATC voice, checklists for the other phases (shutdown, arrival), night/weather modes, taxi to a gate after landing.
+
+### Research for the next phases
+- **Aircraft models:** [amvlab/aircraft-models](https://github.com/amvlab/aircraft-models), CC BY 4.0 (credit required): A320, A350, A380, B737, B787, each 2.7-5.2k triangles, one mesh, one material, one texture, ~200-250 kB, with logo-free variants.
+  No separate gear or control surfaces, so animated parts would need splitting or our procedural rigs. Good for AI traffic and new airliners. Nothing found yet for F-22, a light trainer, A220 or Global 8000.
+- **Terrain:** Copernicus GLO-30 (free licence, attribution) or Mapzen/AWS Terrarium tiles (no key; confirm attribution before shipping). Tested: one z8 Terrarium tile decodes with
+  `h = r*256 + g + b/256 - 32768` (Swiss Alps tile: 45-3550 m) and packs to ~90 kB with brotli. Plan: pre-process offline into chunks for the existing streaming terrain, never call a live service in-game.
+
+## Tooling note
+- On this machine `vitest run` fails in the default pool ("Cannot read properties of undefined (reading 'config')"); use `--pool=vmThreads`.
+  Under that pool the heavy terrain tests need `--testTimeout=240000`, and the sampler's 400 ms wall-clock budget can fail on a slow machine.
+
 ## Known limitations
 - No wind, prop torque/P-factor or asymmetric stall wing-drop; gear force is vertical.
 - No audio, gamepad or touch controls; keyboard + mouse (free-look) only.

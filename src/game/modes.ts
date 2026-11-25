@@ -24,6 +24,20 @@ export const GAME_MODES: readonly GameModeInfo[] = [
     timeLimit: null,
   },
   {
+    id: 'gate',
+    kind: 'challenge',
+    name: 'Gate Departure',
+    tagline: 'Cold and dark at the stand: start up, taxi, take off',
+    description:
+      'You are parked at the apron with the engines off and the parking brake set. Start the engines (N), release the brake (K), taxi along the green lights to the hold-short line, wait for the tower, line up and take off.',
+    objectives: [
+      'Start the engines, set the take-off flaps, release the parking brake',
+      'Taxi to the hold-short line at 15 knots or less and wait for clearance',
+      'Line up on the runway and take off',
+    ],
+    timeLimit: null,
+  },
+  {
     id: 'takeoff',
     kind: 'challenge',
     name: 'Take-off Challenge',

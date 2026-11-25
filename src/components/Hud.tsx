@@ -63,7 +63,7 @@ export function Hud() {
   const units = useGameStore((s) => s.settings.units)
   const cameraMode = useGameStore((s) => s.cameraMode)
   const setCameraMode = useGameStore((s) => s.setCameraMode)
-  const showInstruments = useGameStore((s) => s.settings.showInstruments)
+  const showInstruments = useGameStore((s) => s.settings.showInstruments && s.cameraMode !== 'cockpit')
   const assist = useAutopilotStore((s) => s.assist)
   const apMessage = useAutopilotStore((s) => s.message)
   const lesson = t.lesson

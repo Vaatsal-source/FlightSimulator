@@ -1,5 +1,5 @@
 /**
- * Procedural low-poly transports: A220-300 (underwing GTF), A350-900
+ * Procedural low-poly transports: A220-300 (underwing GTF), A320-200 (sharklets), A350-900
  * (wide-body with black cockpit mask) and Global 8000 (rear engines, T-tail).
  * Generic liveries only: vertex colours, no textures, no real insignia.
  */
@@ -364,6 +364,44 @@ const A220: TransportCfg = {
   noseGear: { hingeY: -1.2, stow: [0, -0.4, -12.6], wheelDx: 0.22, halfWidth: 0.1, strutR: 0.09 },
 }
 
+// ======================================================================= A320
+
+const A320: TransportCfg = {
+  id: 'a320',
+  hull: [
+    { z: -16.4, w: 0, top: 0, bot: 0, y0: -0.55 },
+    { z: -16.0, w: 0.55, top: 0.5, bot: 0.5, y0: -0.55 },
+    { z: -15.0, w: 1.15, top: 1.1, bot: 1.1, y0: -0.4 },
+    { z: -13.5, w: 1.65, top: 1.7, bot: 1.7, y0: -0.2 },
+    { z: -11, w: 1.95, top: 2.0, bot: 2.05, y0: -0.05 },
+    { z: -9, w: 1.98, top: 2.05, bot: 2.1, y0: 0 },
+    { z: 8, w: 1.98, top: 2.05, bot: 2.1, y0: 0 },
+    { z: 12, w: 1.85, top: 1.95, bot: 1.8, y0: 0.15 },
+    { z: 15, w: 1.5, top: 1.6, bot: 1.2, y0: 0.75 },
+    { z: 18, w: 0.95, top: 1.1, bot: 0.75, y0: 1.2 },
+    { z: 21.17, w: 0.2, top: 0.25, bot: 0.2, y0: 1.45 },
+  ],
+  hullSegs: 28,
+  hullSpacing: 3.0,
+  colors: { body: rgb(0xf1f3f5), belly: rgb(0xa8adb3), wing: WHITE_WING, accent: rgb(0xb02a30), engine: rgb(0xc9ced4), cheat: rgb(0x1f3f77) },
+  mask: false,
+  windows: { zStart: -12.2, zEnd: 14.5, pitch: 0.53, phi: 1.2, w: 0.27, h: 0.32 },
+  wing: [sec(1.95, -1.1, -4.9, 6.2, 0.11), sec(17.1, 0.5, 4.3, 1.5, 0.06)],
+  winglet: [sec(17.1, 0.5, 4.3, 1.5, 0.06, [1, -0.21, 0]), sec(17.9, 2.3, 5.5, 0.8, 0.05, [1, -0.21, 0])],
+  spar: 0.72,
+  flap: { t0: 0.12, t1: 0.62, travel: 0.6 },
+  aileron: { t0: 0.7, t1: 0.94 },
+  spoiler: { hinge: [0.16, 0.6], plates: [[0.16, 0.36], [0.4, 0.6]], u0: 0.58 },
+  hstab: [sec(1.0, 1.0, 14.8, 3.6, 0.1), sec(6.2, 1.3, 18.3, 1.4, 0.08)],
+  elevator: { t0: 0.14, t1: 0.93, u0: 0.65 },
+  fin: [sec(0, 1.3, 9.2, 6.4, 0.1, [1, 0, 0]), sec(0, 8.7, 16.4, 2.6, 0.08, [1, 0, 0])],
+  rudder: { t0: 0.21, t1: 0.97, u0: 0.64 },
+  engines: [{ spec: { x: 5.75, y: -1.45, zFront: -3.9, len: 4.1, R: 1.05, body: rgb(0xc9ced4), blades: 18 }, pylon: 'wing' }],
+  nav: { left: [-17.8, 2.3, 5.5], right: [17.8, 2.3, 5.5], tail: [0, 8.6, 18.5], r: 0.12 },
+  mainGear: { hingeY: -0.85, stow: [0.75, -0.55, 0.9], axles: [0], wheelDx: 0.3, halfWidth: 0.15, strutR: 0.12, doorX: 1.55, doorLenZ: 2.0 },
+  noseGear: { hingeY: -1.2, stow: [0, -0.4, -11.4], wheelDx: 0.22, halfWidth: 0.1, strutR: 0.09 },
+}
+
 // ================================================================= Global 8000
 
 const GLOBAL: TransportCfg = {
@@ -404,4 +442,5 @@ const GLOBAL: TransportCfg = {
 
 export const createA350 = (shadows: boolean): AircraftRig => buildTransport(A350, shadows)
 export const createA220 = (shadows: boolean): AircraftRig => buildTransport(A220, shadows)
+export const createA320 = (shadows: boolean): AircraftRig => buildTransport(A320, shadows)
 export const createGlobal8000 = (shadows: boolean): AircraftRig => buildTransport(GLOBAL, shadows)

@@ -21,8 +21,8 @@ import { createFlatTerrain } from '../flatTerrain'
 import type { AircraftState, ControlInputs, SpawnState } from '../types'
 import { dist2d, flightPath, groundSpawn, machSpawn, makeAircraft, run } from './helpers'
 
-const JETS: AircraftId[] = ['f22', 'a220', 'a350', 'global8000']
-const AIRLINERS: AircraftId[] = ['a220', 'a350', 'global8000']
+const JETS: AircraftId[] = ['f22', 'a220', 'a320', 'a350', 'global8000']
+const AIRLINERS: AircraftId[] = ['a220', 'a320', 'a350', 'global8000']
 const RAD = 180 / Math.PI
 
 function numbers(s: AircraftState): number[] {
@@ -170,7 +170,7 @@ describe('engines', () => {
     expect(sim.state.engine.afterburner).toBe(false)
   })
 
-  it.each(['a220', 'a350', 'global8000'] as AircraftId[])(
+  it.each(['a220', 'a320', 'a350', 'global8000'] as AircraftId[])(
     '%s: reverse thrust (~35 %% of max forward) on the ground at idle only',
     (id) => {
       const fwd = makeAircraft(id, groundSpawn())
@@ -220,7 +220,7 @@ describe('landing gear', () => {
   })
 
   it.each(JETS)('%s: gear retracts and extends in the type transit time and adds drag when down', (id) => {
-    const expected = { f22: [3.5, 4.5], a220: [6, 10], a350: [6, 10], global8000: [6, 10] } as Record<string, number[]>
+    const expected = { f22: [3.5, 4.5], a220: [6, 10], a320: [6, 10], a350: [6, 10], global8000: [6, 10] } as Record<string, number[]>
     const sim = makeAircraft(id, approachSpawn(id))
     let tUp = -1
     run(sim, 15, (s) => s.setControls({ gear: 0 }), (s) => {
@@ -269,6 +269,7 @@ describe('landing gear', () => {
   it.each([
     ['a350', 5, 7.5],
     ['a220', 5, 7.5],
+    ['a320', 5, 7.5],
     ['global8000', 5, 7.5],
     ['f22', 6, 8.5],
   ] as [AircraftId, number, number][])('%s: a hard %s m/s touchdown survives, %s m/s breaks the gear', (id, soft, hard) => {

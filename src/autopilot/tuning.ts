@@ -59,6 +59,7 @@ const TUNING: Record<AircraftId, AutopilotTuning> = {
     maxRollRateDeg: 20,
   },
   a220: AIRLINER,
+  a320: AIRLINER,
   a350: AIRLINER,
   global8000: { ...AIRLINER, maxClimb: 15 },
 }

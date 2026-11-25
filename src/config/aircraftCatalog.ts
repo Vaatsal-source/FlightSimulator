@@ -13,9 +13,9 @@
 import type { Vec3 } from '../simulation/types'
 import { AIRCRAFT_GEOMETRY } from './aircraftGeometry'
 
-export type AircraftId = 'trainer' | 'f22' | 'a220' | 'a350' | 'global8000'
+export type AircraftId = 'trainer' | 'f22' | 'a220' | 'a320' | 'a350' | 'global8000'
 
-export const AIRCRAFT_IDS: readonly AircraftId[] = ['trainer', 'f22', 'a220', 'a350', 'global8000']
+export const AIRCRAFT_IDS: readonly AircraftId[] = ['trainer', 'f22', 'a220', 'a320', 'a350', 'global8000']
 
 export type EngineKind = 'piston' | 'turbofan' | 'afterburningTurbofan'
 
@@ -178,9 +178,49 @@ export const AIRCRAFT: readonly AircraftInfo[] = [
         rightEngine: v(5.5, -2.7, -1.5),
         belly: v(0, -1.9, 0),
       },
-      eyePoint: v(-0.5, 1.2, -15.5),
+      eyePoint: v(-0.5, 1.0, -15.5),
     },
     sources: ['https://en.wikipedia.org/wiki/Airbus_A220 (A220-300 specifications)', 'Approach and rotate speeds: estimates'],
+  },
+  {
+    id: 'a320',
+    name: 'A320-200',
+    manufacturer: 'Airbus',
+    role: 'Narrow-body short- and medium-haul airliner',
+    engineKind: 'turbofan',
+    engines: 2,
+    blurb: 'The best-selling narrow-body: fly-by-wire, sharklets, CFM56 engines. Needs a regional runway.',
+    specs: [
+      { label: 'Length / span', value: '37.57 m / 35.8 m (with sharklets)' },
+      { label: 'Wing area', value: '122.6 m²' },
+      { label: 'Empty / max take-off weight', value: '42,600 kg / 78,000 kg' },
+      { label: 'Engines', value: '2 x CFM56-5B4, 120 kN' },
+      { label: 'Cruise', value: 'Mach 0.78 typical, 0.82 max (VMO 350 kt)' },
+      { label: 'Ceiling', value: '39,100 ft' },
+      { label: 'Take-off / landing field', value: '2,090 m / 1,500 m' },
+    ],
+    speeds: { stallClean: 68, rotate: 75, approach: 68, maxOperating: 180, maxMach: 0.82 },
+    minRunway: 1900,
+    takeoffFlaps: 1 / 3,
+    landingFlaps: 1,
+    camera: { chaseDistance: 54, chaseHeight: 12 },
+    geometry: {
+      length: 37.57,
+      wingspan: 35.8,
+      height: 11.76,
+      wing: { area: 122.6, meanChord: 3.9, span: 35.8 },
+      gear: { nose: v(0, -3.1, -11.6), mainLeft: v(-3.8, -3.1, 0.9), mainRight: v(3.8, -3.1, 0.9), wheelRadius: 0.58, retractable: true },
+      strikePoints: {
+        tail: v(0, -0.35, 15.4),
+        leftWingtip: v(-17.9, 2.3, 5.4),
+        rightWingtip: v(17.9, 2.3, 5.4),
+        leftEngine: v(-5.75, -2.5, -1.8),
+        rightEngine: v(5.75, -2.5, -1.8),
+        belly: v(0, -1.8, 0),
+      },
+      eyePoint: v(-0.5, 1.0, -13.2),
+    },
+    sources: ['https://en.wikipedia.org/wiki/Airbus_A320_family (A320-200 specifications)', 'Approach and rotate speeds: estimates'],
   },
   {
     id: 'a350',

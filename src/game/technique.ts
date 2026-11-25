@@ -107,16 +107,17 @@ const LESSON_AIRPORT: Record<AircraftId, string> = {
   trainer: 'central',
   f22: 'ridgeback',
   a220: 'westport',
+  a320: 'westport',
   a350: 'harbor',
   global8000: 'southgate',
 }
 
 /** Initial climb pitch; the heavy A350 climbs flatter so it can accelerate to clean up the flaps. */
-const CLIMB_PITCH: Record<AircraftId, number> = { trainer: 8, f22: 15, a220: 12, a350: 10, global8000: 12 }
+const CLIMB_PITCH: Record<AircraftId, number> = { trainer: 8, f22: 15, a220: 12, a320: 12, a350: 10, global8000: 12 }
 
 /** Flaps come up above this multiple of the rotation speed. */
 export const FLAPS_UP_FACTOR = 1.12
-const FLARE_PITCH: Record<AircraftId, number> = { trainer: 5, f22: 9, a220: 4, a350: 4, global8000: 4 }
+const FLARE_PITCH: Record<AircraftId, number> = { trainer: 5, f22: 9, a220: 4, a320: 4, a350: 4, global8000: 4 }
 
 const NOTES: Record<AircraftId, string[]> = {
   trainer: ['Light and forgiving: small inputs, it reacts at once', 'Lands at about 65 kt with one notch of flaps'],
@@ -126,6 +127,11 @@ const NOTES: Record<AircraftId, string[]> = {
     'Approach fast: about 145 kt, no flaps',
   ],
   a220: ['Fly-by-wire: the nose stays where you leave it', 'Rotate slowly; tail strike below 10 degrees on the ground'],
+  a320: [
+    'Fly-by-wire with protections: the nose stays where you leave it',
+    'Rotate at about 3 degrees a second; the tail touches at 11 degrees',
+    'Flaps 1 for take-off, FULL to land',
+  ],
   a350: [
     'Very heavy: inputs take seconds to show',
     'Rotate slowly and stop at 8 degrees on the ground',

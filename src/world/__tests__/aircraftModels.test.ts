@@ -48,8 +48,8 @@ function wheelBox(rig: AircraftRig, w: AircraftRig['wheels'][number]): Box3 {
 }
 
 const info = (id: AircraftId): AircraftInfo => AIRCRAFT.find((a) => a.id === id)!
-const IDS: AircraftId[] = ['trainer', 'f22', 'a220', 'a350', 'global8000']
-const JETS: AircraftId[] = ['f22', 'a220', 'a350', 'global8000']
+const IDS: AircraftId[] = ['trainer', 'f22', 'a220', 'a320', 'a350', 'global8000']
+const JETS: AircraftId[] = ['f22', 'a220', 'a320', 'a350', 'global8000']
 
 describe.each(IDS)('aircraft model %s', (id) => {
   const a = info(id)
@@ -202,7 +202,7 @@ describe('control surface sign conventions', () => {
     return out
   }
 
-  for (const id of ['trainer', 'a220', 'a350', 'global8000', 'f22'] as AircraftId[]) {
+  for (const id of ['trainer', 'a220', 'a320', 'a350', 'global8000', 'f22'] as AircraftId[]) {
     it(`${id}: positive aileron lifts the right trailing edge and drops the left`, () => {
       const rig = createAircraftRig(id, false)
       const moved = movedMeshes(rig, id, { surfaces: { elevator: 0, aileron: 0.2, rudder: 0, flaps: 0 } })
@@ -268,6 +268,6 @@ describe('model swap and frozen animation', () => {
       return `${id}: ${s.triangles} tris, ${s.meshes} meshes`
     })
     console.log(lines.join('\n'))
-    expect(lines.length).toBe(5)
+    expect(lines.length).toBe(6)
   })
 })

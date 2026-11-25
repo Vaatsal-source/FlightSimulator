@@ -9,6 +9,7 @@ import { HOME_AIRPORT_ID } from '../config/airports'
 import { SPAWNS } from '../config/world'
 import type { SpawnState } from '../simulation/types'
 import { GLIDE_SLOPE_DEG, getRunwayEnd, headingVector } from './airportGeometry'
+import { gateStandSpawn } from './groundOps'
 import { techniqueFor } from './technique'
 import type { GameMode } from './types'
 
@@ -66,6 +67,7 @@ export function spawnFor(mode: GameMode, place: FlightPlace, aircraftId: Aircraf
     if (!jet) return SPAWNS.rings
     return { ...SPAWNS.rings, airspeed: Math.max(ac.speeds.approach * 1.6, 100), throttle: 0.6, gearUp: true }
   }
+  if (mode === 'gate') return gateStandSpawn(place, ac.takeoffFlaps)
   const end = getRunwayEnd(place.airportId, place.runwayEnd)
   const d = headingVector(end.headingDeg)
   if (mode === 'landing') {

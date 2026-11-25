@@ -146,6 +146,47 @@ describe('A220-300 (56.7 t)', () => {
   }, 30000)
 })
 
+describe('A320-200 (62.4 t)', () => {
+  it('take-off with flaps 1 lifts off within 2,000 m', () => {
+    const r = takeoff('a320')
+    expect(r.crashed).toBe(false)
+    expect(r.liftoff).toBeGreaterThan(800)
+    expect(r.liftoff).toBeLessThanOrEqual(2000)
+    expect(r.liftoffSpeed).toBeGreaterThan(getAircraft('a320').speeds.rotate)
+  }, 30000)
+
+  it('validation at MTOW (78 t): distance to 35 ft x 1.15 matches the published ~2,090 m take-off field (+-15 %)', () => {
+    const r = takeoff('a320', { ...AIRCRAFT_CONFIGS.a320, mass: 78_000 })
+    expect(r.crashed).toBe(false)
+    expect(r.screen * 1.15).toBeGreaterThan(2090 * 0.85)
+    expect(r.screen * 1.15).toBeLessThan(2090 * 1.15)
+  }, 30000)
+
+  it('clean 1 g stall (EAS) within 12 % of speeds.stallClean', () => {
+    const r = stallEas('a320')
+    const vs = getAircraft('a320').speeds.stallClean
+    expect(r.g).toBeGreaterThan(0.9)
+    expect(r.g).toBeLessThan(1.1)
+    expect(Math.abs(r.eas / vs - 1)).toBeLessThan(0.12)
+  }, 30000)
+
+  it('cruise thrust at 11 km settles at Mach 0.76-0.82', () => {
+    const m = levelMach('a320', 11000, CRUISE_THROTTLE)
+    expect(m).toBeGreaterThanOrEqual(0.76)
+    expect(m).toBeLessThanOrEqual(0.82)
+  }, 30000)
+
+  it('ceiling: climbs from 11 km through 12 km at full thrust holding Mach 0.78', () => {
+    const sim = makeAircraft('a320', machSpawn(0.78, 11000, { throttle: 1 }))
+    let t12 = -1
+    run(sim, 600, (s) => s.setControls({ throttle: 1, pitch: fbwMachClimbStick(s, 0.78) }), (s) => {
+      if (s.state.altitude >= 12000) t12 = s.state.simTime
+      return t12 > 0
+    })
+    expect(t12).toBeGreaterThan(0)
+  }, 30000)
+})
+
 describe('Global 8000 (41.7 t)', () => {
   it('take-off with flaps 1/3 lifts off within 1,800 m', () => {
     const r = takeoff('global8000')

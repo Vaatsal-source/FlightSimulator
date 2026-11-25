@@ -14,7 +14,7 @@ const slope: TerrainSampler = {
 
 // Fly-by-wire airliners read the spawn pitch as the flight-path angle and hold it hands-off
 // (flare mode shallows it a little near the ground).
-const JETS: AircraftId[] = ['a220', 'a350', 'global8000']
+const JETS: AircraftId[] = ['a220', 'a320', 'a350', 'global8000']
 
 function approach(id: AircraftId, headingDeg: number, pathDeg: number) {
   const ac = getAircraft(id)

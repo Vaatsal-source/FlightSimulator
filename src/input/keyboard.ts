@@ -31,6 +31,8 @@ const KEYS = {
   gear: ['KeyG'],
   speedbrake: ['KeyV'],
   reverse: ['KeyY'],
+  engines: ['KeyN'],
+  parkingBrake: ['KeyK'],
 } as const
 
 const FLIGHT_CODES: ReadonlySet<string> = new Set(Object.values(KEYS).flat())
@@ -59,6 +61,9 @@ export class KeyboardControls {
   /** Gear lever: 1 = down. */
   private gear = 1
   private speedbrake = 0
+  /** Edge counters: each press of N / K adds one; the session acts on a change. */
+  engineToggles = 0
+  parkingBrakeToggles = 0
 
   /** True for codes this controller uses (callers preventDefault on them). */
   static isFlightKey(code: string): boolean {
@@ -79,6 +84,10 @@ export class KeyboardControls {
       this.gear = this.gear > 0.5 ? 0 : 1
     } else if ((KEYS.speedbrake as readonly string[]).includes(code)) {
       this.speedbrake = this.speedbrake > 0.5 ? 0 : 1
+    } else if ((KEYS.engines as readonly string[]).includes(code)) {
+      this.engineToggles++
+    } else if ((KEYS.parkingBrake as readonly string[]).includes(code)) {
+      this.parkingBrakeToggles++
     }
   }
 

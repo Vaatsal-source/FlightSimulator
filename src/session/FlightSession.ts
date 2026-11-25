@@ -14,6 +14,7 @@ import type { AircraftId } from '../config/aircraftCatalog'
 import { GRAVITY } from '../simulation/atmosphere'
 import { approachGuidance, getRunwayEnd, nearestAirport } from '../game/airportGeometry'
 import { createChallenge, type Challenge } from '../game/challenges'
+import { GroundOps, planTaxiRoute } from '../game/groundOps'
 import { atMultiplayerStart, HOME_PLACE, spawnFor, type FlightPlace } from '../game/spawns'
 import { safePitchAtHeight, techniqueFor, type Technique } from '../game/technique'
 import { RING_COURSE } from '../game/courses'
@@ -24,6 +25,7 @@ import { FixedTimestep } from '../simulation/FixedTimestep'
 import { interpolatePose } from '../simulation/interpolate'
 import type { AircraftRenderState, ControlInputs, FlightModel, SpawnState, TerrainSampler } from '../simulation/types'
 import { clearDialed, resetAutopilot, useAutopilotStore } from '../state/autopilotStore'
+import { useGroundStore } from '../state/groundStore'
 import { publishTelemetry, resetTelemetry, type NavInfo } from '../state/telemetry'
 import { getTerrainSampler } from '../world/terrain/terrainSampler'
 
@@ -96,6 +98,11 @@ export class FlightSession {
   private athrActive = false
   private athrThrottle = 0
   private apDisconnectCount = 0
+  /** Gate departure: the ground-operations state machine, null in other modes. */
+  private groundOps: GroundOps | null = null
+  private parkingBrake = false
+  private engineTogglesSeen = 0
+  private parkingTogglesSeen = 0
   private mode: GameMode
   private place: FlightPlace
   private challenge: Challenge
@@ -189,6 +196,18 @@ export class FlightSession {
     this.landingAssist.cancel()
     resetAutopilot()
     this.assistRequestsSeen = useAutopilotStore.getState().assistRequests
+    this.engineTogglesSeen = this.keyboard.engineToggles
+    this.parkingTogglesSeen = this.keyboard.parkingBrakeToggles
+    if (mode === 'gate') {
+      const route = planTaxiRoute(place)
+      this.groundOps = new GroundOps(route, getAircraft(this.aircraftId).takeoffFlaps)
+      this.parkingBrake = true
+      useGroundStore.getState().setRoute(route)
+    } else {
+      this.groundOps = null
+      this.parkingBrake = false
+      useGroundStore.getState().setRoute(null)
+    }
     this.renderState.teleportId++
     this.syncRenderState(1)
     this.publish()
@@ -221,6 +240,7 @@ export class FlightSession {
 
   dispose(): void {
     this.keyboard.releaseAll()
+    useGroundStore.getState().setRoute(null)
     resetTelemetry()
     resetAutopilot()
   }
@@ -491,6 +511,8 @@ export class FlightSession {
 
   private readonly stepOnce = (dt: number): void => {
     const controls = this.keyboard.update(dt)
+    this.handleGroundKeys()
+    if (this.parkingBrake) controls.brakes = 1
     this.handleAssistRequest()
     if (this.landingAssist.active) this.applyLandingAssist(controls, dt)
     else this.applyAutopilot(controls, dt)
@@ -517,6 +539,22 @@ export class FlightSession {
     }
     this.keyboard.syncGear(this.physics.state.controls.gear)
     this.challenge.update(this.physics.state, dt)
+  }
+
+  /** N starts or stops the engines (a shutdown only when stopped on the ground), K toggles the parking brake. */
+  private handleGroundKeys(): void {
+    const kb = this.keyboard
+    if (kb.engineToggles !== this.engineTogglesSeen) {
+      this.engineTogglesSeen = kb.engineToggles
+      const s = this.physics.state
+      if (this.physics.engineStartProgress > 0) this.physics.stopEngines()
+      else if (!s.engine.running) this.physics.startEngines()
+      else if (s.onGround && s.groundSpeed < 3) this.physics.stopEngines()
+    }
+    if (kb.parkingBrakeToggles !== this.parkingTogglesSeen) {
+      this.parkingTogglesSeen = kb.parkingBrakeToggles
+      this.parkingBrake = !this.parkingBrake
+    }
   }
 
   private syncKeyboard(): void {
@@ -590,6 +628,23 @@ export class FlightSession {
       reverse: s.controls.reverse,
       lesson: this.challenge.lessonView ?? null,
       touchdown: this.lastTouchdown,
+      engineStart: this.physics.engineStartProgress,
+      parkingBrake: this.parkingBrake,
+      ground: this.groundOps
+        ? this.groundOps.update({
+            x: s.position.x,
+            z: s.position.z,
+            headingDeg: s.headingDeg,
+            groundSpeed: s.groundSpeed,
+            onGround: s.onGround,
+            heightAboveGround: s.heightAboveGround,
+            engineRunning: s.engine.running,
+            engineStart: this.physics.engineStartProgress,
+            parkingBrake: this.parkingBrake,
+            flaps: s.controls.flaps,
+            time: s.simTime,
+          })
+        : null,
     })
   }
 

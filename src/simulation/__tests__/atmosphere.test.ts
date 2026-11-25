@@ -32,7 +32,7 @@ describe('ISA atmosphere to 20 km', () => {
 
 describe('compressibility drag', () => {
   it('is zero below the critical Mach, rises past it and stays finite and bounded to Mach 2.3+', () => {
-    for (const id of ['a220', 'a350', 'global8000', 'f22'] as const) {
+    for (const id of ['a220', 'a320', 'a350', 'global8000', 'f22'] as const) {
       const c = AIRCRAFT_CONFIGS[id].aero.compressibility
       expect(c).not.toBeNull()
       if (!c) continue

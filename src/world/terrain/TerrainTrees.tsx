@@ -8,13 +8,19 @@ import {
   CylinderGeometry,
   DynamicDrawUsage,
   IcosahedronGeometry,
+  OctahedronGeometry,
   InstancedMesh,
   MeshLambertMaterial,
+  type PerspectiveCamera,
+  Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { QualityProfile } from '../../config/quality'
 import type { TerrainSampler } from '../../simulation/types'
+import { KEEP_ALL_DISTANCE, TREE_NEAR_DISTANCE, YAW_REWRITE, viewHalfAngle } from './treeLod'
 import { TREE_STRIDE, TREE_TILE, TREE_TYPE_COUNT, placeTreeTile, type TreeTile } from './treePlacement'
+
+const _dir = new Vector3()
 
 function paint(g: BufferGeometry, color: number): BufferGeometry {
   const c = new Color(color)
@@ -62,6 +68,17 @@ function poplar(): BufferGeometry {
   return merge([paint(trunk, 0x6b5a46), paint(crown, 0x6a9442)])
 }
 
+/** Distant versions: 10-20 triangles instead of 70-140. Same footprint, height and colour, so the switch is hard to see. */
+function coniferFar(): BufferGeometry {
+  return paint(new ConeGeometry(3.2, 14, 5).translate(0, 8, 0), 0x417f47)
+}
+function broadleafFar(): BufferGeometry {
+  return paint(new OctahedronGeometry(4, 0).scale(1, 1.1, 1).translate(0, 7, 0), 0x628f3f)
+}
+function poplarFar(): BufferGeometry {
+  return paint(new OctahedronGeometry(2, 0).scale(1, 3.4, 1).translate(0, 9.2, 0), 0x7fae52)
+}
+
 const TILE_BUDGET_MS = 2.5
 const TILE_CACHE = 900
 const RESELECT_DISTANCE = 60
@@ -74,23 +91,27 @@ export function TerrainTrees({ terrain, profile }: { terrain: TerrainSampler; pr
   const { treeDensity, treeViewDistance, shadows } = profile
 
   const res = useMemo(() => {
-    const geometries = [conifer(), broadleaf(), poplar()]
+    // Meshes 0..2 are the detailed trees, 3..5 the cheap distant ones.
+    const geometries = [conifer(), broadleaf(), poplar(), coniferFar(), broadleafFar(), poplarFar()]
     const material = new MeshLambertMaterial({ vertexColors: true })
-    // Room for every tile in view at full forest cover.
-    const reach = treeViewDistance + TREE_TILE
-    const capacity = Math.ceil((treeDensity * Math.PI * reach * reach * 1.15) / 1e6) + 64
+    // Room for every tile in range at full forest cover.
+    const capacityFor = (range: number) => Math.ceil((treeDensity * Math.PI * range * range * 1.15) / 1e6) + 64
+    const farCapacity = capacityFor(treeViewDistance + TREE_TILE)
+    const nearCapacity = capacityFor(Math.min(treeViewDistance, TREE_NEAR_DISTANCE) + TREE_TILE)
     const meshes = geometries.map((g, i) => {
-      const mesh = new InstancedMesh(g, material, capacity)
-      mesh.name = `trees-${i}`
+      const near = i < TREE_TYPE_COUNT
+      const mesh = new InstancedMesh(g, material, near ? nearCapacity : farCapacity)
+      mesh.name = near ? `trees-${i}` : `trees-far-${i - TREE_TYPE_COUNT}`
       mesh.instanceMatrix.setUsage(DynamicDrawUsage)
       mesh.setColorAt(0, new Color(1, 1, 1))
       mesh.count = 0
       mesh.frustumCulled = false
-      mesh.castShadow = shadows
+      // Only the detailed trees are close enough to the sun's shadow box to matter.
+      mesh.castShadow = shadows && near
       mesh.receiveShadow = false
       return mesh
     })
-    return { geometries, material, meshes, capacity }
+    return { geometries, material, meshes }
   }, [treeDensity, treeViewDistance, shadows])
 
   const state = useMemo(
@@ -100,6 +121,7 @@ export function TerrainTrees({ terrain, profile }: { terrain: TerrainSampler; pr
       shown: '',
       lastX: Infinity,
       lastZ: Infinity,
+      lastYaw: Infinity,
       frame: 0,
       lastWrite: -Infinity,
       dirty: true,
@@ -146,6 +168,21 @@ export function TerrainTrees({ terrain, profile }: { terrain: TerrainSampler; pr
       state.dirty = true
     }
 
+    // Distant trees are only kept in front of the camera: rewrite when the view has turned enough.
+    camera.getWorldDirection(_dir)
+    const fh = Math.hypot(_dir.x, _dir.z)
+    const yaw = Math.atan2(_dir.x, -_dir.z)
+    const dyaw = Math.abs(Math.atan2(Math.sin(yaw - state.lastYaw), Math.cos(yaw - state.lastYaw)))
+    if (!(dyaw < YAW_REWRITE)) {
+      state.lastYaw = yaw
+      state.dirty = true
+    }
+    const persp = camera as PerspectiveCamera
+    const half = viewHalfAngle(persp.fov ?? 70, persp.aspect ?? 1.78, fh)
+    const cosHalf = half === null ? -2 : Math.cos(half)
+    const fx = fh > 1e-6 ? _dir.x / fh : 0
+    const fz = fh > 1e-6 ? _dir.z / fh : -1
+
     // Place missing tiles within a small time budget.
     const start = performance.now()
     let missing = false
@@ -166,20 +203,29 @@ export function TerrainTrees({ terrain, profile }: { terrain: TerrainSampler; pr
     state.lastWrite = state.frame
 
     // Rewrite the instance buffers from the ready wanted tiles.
-    const counts = new Array<number>(TREE_TYPE_COUNT).fill(0)
+    const counts = new Array<number>(TREE_TYPE_COUNT * 2).fill(0)
+    const near2 = TREE_NEAR_DISTANCE * TREE_NEAR_DISTANCE
+    const keep2 = KEEP_ALL_DISTANCE * KEEP_ALL_DISTANCE
     for (const [tx, tz] of state.wanted) {
       const tile = state.tiles.get(`${tx}:${tz}`)
       if (!tile) continue
       tile.used = state.frame
       for (let t = 0; t < TREE_TYPE_COUNT; t++) {
-        const mesh = res.meshes[t]
         const src = tile.trees[t]
-        const m = mesh.instanceMatrix.array as Float32Array
-        const col = mesh.instanceColor!.array as Float32Array
-        for (let k = 0; k < src.length && counts[t] < res.capacity; k += TREE_STRIDE) {
+        for (let k = 0; k < src.length; k += TREE_STRIDE) {
           // Only trees within the view distance (tiles reach a little beyond it).
-          if ((src[k] - state.lastX) ** 2 + (src[k + 2] - state.lastZ) ** 2 > r * r) continue
-          const i = counts[t]++
+          const dx = src[k] - state.lastX
+          const dz = src[k + 2] - state.lastZ
+          const d2 = dx * dx + dz * dz
+          if (d2 > r * r) continue
+          // Distant trees behind or beside the camera are not drawn at all.
+          if (d2 > keep2 && cosHalf > -2 && dx * fx + dz * fz < Math.sqrt(d2) * cosHalf) continue
+          const slot = d2 < near2 ? t : t + TREE_TYPE_COUNT
+          const mesh = res.meshes[slot]
+          if (counts[slot] >= mesh.instanceMatrix.count) continue
+          const m = mesh.instanceMatrix.array as Float32Array
+          const col = mesh.instanceColor!.array as Float32Array
+          const i = counts[slot]++
           const rot = src[k + 3]
           const sw = src[k + 4]
           const sh = src[k + 5]
@@ -209,7 +255,7 @@ export function TerrainTrees({ terrain, profile }: { terrain: TerrainSampler; pr
         }
       }
     }
-    for (let t = 0; t < TREE_TYPE_COUNT; t++) {
+    for (let t = 0; t < res.meshes.length; t++) {
       const mesh = res.meshes[t]
       mesh.count = counts[t]
       mesh.instanceMatrix.clearUpdateRanges()

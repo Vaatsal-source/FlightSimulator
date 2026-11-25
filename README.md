@@ -19,13 +19,16 @@ Take off, fly a circuit and grease the landing, from a light trainer to an A350.
 ## Features
 
 - **Flight physics:** lift, drag, thrust and ground handling for each aircraft, including landing on open ground
-- **Five aircraft:** FS-1 Trainer, Airbus A220, Airbus A350, Bombardier Global 8000 and F-22, each tuned against published figures
+- **Six aircraft:** FS-1 Trainer, Airbus A220, Airbus A320, Airbus A350, Bombardier Global 8000 and F-22, each tuned against published figures
 - **Airports and maps:** airports with more than one runway, a minimap and a full world map
 - **Autopilot:** speed, heading, altitude and vertical-speed holds
 - **Landing assist** (press `0` near a runway): flies the approach and the 3° glide path down to 100 ft, then hands over for the flare, and goes around if the approach is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
+- **Gate departure:** start cold and dark at the stand, start the engines, taxi along the lights to the hold-short line, get clearance and take off
 - **Flight School:** guided take-off, landing and full-circuit lessons
 - **Challenges:** take-off, landing and ring courses, with best scores kept in your pilot log
+- **3D cockpits:** a flight deck for each aircraft (round gauges, airliner glass screens, fighter HUD), with head motion and mouse look
+- **AI traffic:** airliners fly between the airports, take off and land (scenery, no collision)
 - **Time of day:** morning, noon or evening light
 - **Multiplayer:** share a room code and fly the island together, with mid-air collisions and an airborne-time leaderboard
 
@@ -59,6 +62,10 @@ Then open the local URL Vite prints (usually http://localhost:5173).
 | Landing assist                 | `0`                                      |
 | Camera: chase / cockpit / free | `1` / `2` / `3` (`C` cycles)             |
 | Toggle HUD / instruments       | `H` / `I`                                |
+| Engines start / stop           | `N`                                      |
+| Parking brake                  | `K`                                      |
+| Performance stats              | `F3`                                     |
+| Look around (cockpit view)     | drag the mouse                           |
 | World map                      | `M`                                      |
 | Multiplayer leaderboard        | `L` (in a room)                          |
 | Pause                          | `Esc` or `P`                             |
@@ -161,6 +168,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an i
 ## Tech stack
 
 [React 19](https://react.dev) · [Three.js](https://threejs.org) · [@react-three/fiber](https://r3f.docs.pmnd.rs) · [Zustand](https://zustand.docs.pmnd.rs) · [Vite](https://vite.dev) · [Vitest](https://vitest.dev) · TypeScript
+
+## Credits
+
+- AI traffic airliners (A320, A350, A380, B737, B787): [amvlab aircraft-models](https://github.com/amvlab/aircraft-models), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [public/models/traffic/CREDITS.md](public/models/traffic/CREDITS.md).
 
 ## License
 

@@ -344,7 +344,32 @@ export class AircraftPhysics implements FlightModel {
 
   // ----------------------------------------------------------------- reset
 
+  /** Seconds for a start: a piston catches almost at once, a jet spools up through the start sequence. */
+  private static readonly START_SECONDS_PISTON = 3
+  private static readonly START_SECONDS_JET = 30
+  private starterOn = false
+  private startProgress = 0
+
+  get engineStartProgress(): number {
+    return this.startProgress
+  }
+
+  startEngines(): void {
+    if (this.state.crashed || this.state.engine.running) return
+    this.starterOn = true
+  }
+
+  stopEngines(): void {
+    this.starterOn = false
+    this.startProgress = 0
+    const eng = this.state.engine
+    eng.running = false
+    eng.afterburner = false
+  }
+
   reset(spawn: SpawnState): void {
+    this.starterOn = false
+    this.startProgress = 0
     const s = this.state
     const cfg = this.config
     const fresh = createAircraftState()
@@ -623,6 +648,16 @@ export class AircraftPhysics implements FlightModel {
     const eng = s.engine
     const dt = this.fixedDt
     const j = this.jet
+    if (!eng.running && this.starterOn) {
+      const seconds = j === null ? AircraftPhysics.START_SECONDS_PISTON : AircraftPhysics.START_SECONDS_JET
+      this.startProgress = Math.min(1, this.startProgress + dt / seconds)
+      if (this.startProgress >= 1) {
+        // Lit: the engine settles at idle through its normal spool dynamics.
+        eng.running = true
+        this.starterOn = false
+        this.startProgress = 0
+      }
+    }
     if (j === null) {
       const target = eng.running ? c.throttle : 0
       eng.spool += (target - eng.spool) * (target > eng.spool ? this.spoolUpGain : this.spoolDownGain)
@@ -666,13 +701,16 @@ export class AircraftPhysics implements FlightModel {
     const eng = this.state.engine
     const e = this.config.engine
     if (e.kind === 'piston') {
-      const target = eng.running ? e.idleRpm + (e.maxRpm - e.idleRpm) * eng.spool : clamp(forwardSpeed * 12, 0, e.idleRpm * 2)
+      const windmill = clamp(forwardSpeed * 12, 0, e.idleRpm * 2)
+      const target = eng.running ? e.idleRpm + (e.maxRpm - e.idleRpm) * eng.spool : Math.max(windmill, this.startProgress * e.idleRpm)
       eng.rpm = immediate ? target : eng.rpm + (target - eng.rpm) * this.rpmGain
       eng.n1 = eng.rpm / e.maxRpm
       eng.afterburner = false
       return
     }
-    eng.n1 = eng.running ? e.idleN1 + (1 - e.idleN1) * Math.sqrt(eng.spool) : clamp(forwardSpeed / 1500, 0, 0.15)
+    eng.n1 = eng.running
+      ? e.idleN1 + (1 - e.idleN1) * Math.sqrt(eng.spool)
+      : Math.max(clamp(forwardSpeed / 1500, 0, 0.15), this.startProgress * e.idleN1)
     eng.rpm = eng.n1 * e.maxFanRpm
   }
 
@@ -931,6 +969,8 @@ export class AircraftPhysics implements FlightModel {
     s.engine.n1 = 0
     s.engine.afterburner = false
     s.engine.running = false
+    this.starterOn = false
+    this.startProgress = 0
     this.updateDerived()
   }
 

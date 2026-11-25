@@ -64,3 +64,8 @@ export function generateClouds(count: number, seed: number = WORLD.seed ^ 0xc10d
   }
   return clouds
 }
+
+/** How lit a cloud puff is, 0 (shaded underside) to 1 (sunlit top): its height in the cloud and the side facing the sun. */
+export function puffLight(heightFrac: number, towardSun: number): number {
+  return Math.max(0, Math.min(1, 0.2 + 0.45 * heightFrac + 0.35 * towardSun))
+}

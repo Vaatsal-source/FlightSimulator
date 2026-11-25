@@ -102,6 +102,8 @@ const BASE_SPAWNS: Record<'freeFlight' | 'takeoff' | 'landing' | 'rings', SpawnS
 /** Lessons start like the matching challenges (spawnFor moves them to the lesson airport). */
 export const SPAWNS: Record<GameMode, SpawnState> = {
   ...BASE_SPAWNS,
+  // spawnFor() computes the stand from the airport; this is only the type's placeholder.
+  gate: { ...BASE_SPAWNS.freeFlight, engineRunning: false },
   lessonTakeoff: BASE_SPAWNS.takeoff,
   lessonLanding: BASE_SPAWNS.landing,
   lessonCircuit: BASE_SPAWNS.takeoff,

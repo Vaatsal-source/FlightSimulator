@@ -34,7 +34,7 @@ describe('spawns', () => {
 
   it('onGround spawns sit on the runway, with runway heading, at rest', () => {
     const ground = modes.filter((m) => SPAWNS[m].onGround)
-    expect([...ground].sort()).toEqual(['freeFlight', 'lessonCircuit', 'lessonTakeoff', 'takeoff'])
+    expect([...ground].sort()).toEqual(['freeFlight', 'gate', 'lessonCircuit', 'lessonTakeoff', 'takeoff'])
     for (const mode of ground) {
       const sp = SPAWNS[mode]
       expect(isOnRunway(sp.position.x, sp.position.z), mode).toBe(true)
@@ -178,6 +178,7 @@ describe('quality profiles', () => {
       'shadowMapSize',
       'fogFar',
       'maxDpr',
+      'trafficCount',
     ] as const
     for (const key of numeric) {
       const [lo, mid, hi] = QUALITY_LEVELS.map((q) => QUALITY_PROFILES[q][key])

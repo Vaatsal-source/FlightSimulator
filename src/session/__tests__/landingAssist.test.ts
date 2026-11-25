@@ -14,6 +14,7 @@ const PLACE: Record<AircraftId, FlightPlace> = {
   trainer: { airportId: 'central', runwayEnd: '36' },
   f22: { airportId: 'central', runwayEnd: '36' },
   a220: { airportId: 'harbor', runwayEnd: '09R' },
+  a320: { airportId: 'harbor', runwayEnd: '09R' },
   a350: { airportId: 'harbor', runwayEnd: '09R' },
   global8000: { airportId: 'harbor', runwayEnd: '09R' },
 }

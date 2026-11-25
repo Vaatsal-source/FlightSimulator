@@ -17,11 +17,11 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('hangar', () => {
-  it('shows all 5 aircraft and selecting persists in the store', () => {
+  it('shows all 6 aircraft and selecting persists in the store', () => {
     useGameStore.setState({ screen: 'modeSelect' })
     render(<GameUI />)
     for (const a of AIRCRAFT) expect(screen.getByTestId(`aircraft-card-${a.id}`)).toBeTruthy()
-    expect(AIRCRAFT).toHaveLength(5)
+    expect(AIRCRAFT).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: 'Select A350-900' }))
     expect(state().aircraftId).toBe('a350')
     expect(screen.getByTestId('aircraft-card-a350').getAttribute('data-selected')).toBe('true')

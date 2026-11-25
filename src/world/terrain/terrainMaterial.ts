@@ -6,7 +6,8 @@
  * fades in near the camera.
  */
 
-import { Color, MeshStandardMaterial } from 'three'
+import { Color, MeshStandardMaterial, Vector2 } from 'three'
+import { AIRPORTS } from '../../config/airports'
 
 const PALETTE = {
   uSeabedDeep: 0x2d5a5c,
@@ -51,6 +52,7 @@ uniform vec3 uAlpine;
 uniform vec3 uRock;
 uniform vec3 uRockDark;
 uniform vec3 uSnow;
+uniform vec2 uAirports[AIRPORT_COUNT];
 
 float tHash(vec2 p) {
   p = mod(p, 4096.0);
@@ -95,6 +97,44 @@ const FRAGMENT_COLOR = /* glsl */ `
   col = mix(col, uForest, forest * 0.85 * (1.0 - alpine) * (1.0 - smoothstep(0.14, 0.26, slope)));
   col = mix(col, uAlpine, alpine);
 
+  // Fields: a rotated grid of patches, each with its own crop colour and ploughed rows, hedgerows between
+  // them. Flat lowland only, fading out with distance and kept clear of the airfields.
+  {
+    float flatLand = 1.0 - smoothstep(0.04, 0.12, slope);
+    float lowland = 1.0 - smoothstep(320.0, 620.0, h);
+    float airDist = 1.0e9;
+    for (int i = 0; i < AIRPORT_COUNT; i++) airDist = min(airDist, distance(wp, uAirports[i]));
+    float fieldW = flatLand * lowland * (1.0 - forest) * step(3.8, h)
+      * (1.0 - smoothstep(7000.0, 16000.0, dist)) * smoothstep(1500.0, 3200.0, airDist);
+    if (fieldW > 0.01) {
+      vec2 q = mat2(0.8660, -0.5, 0.5, 0.8660) * wp;
+      vec2 cellSize = vec2(230.0, 160.0);
+      vec2 g = q / cellSize;
+      vec2 id = floor(g);
+      vec2 f = fract(g);
+      float h1 = tHash(id + 3.7);
+      float h2 = tHash(id + 41.3);
+      vec3 crop = h1 < 0.22 ? vec3(0.30, 0.52, 0.18)
+                : h1 < 0.42 ? vec3(0.70, 0.60, 0.27)
+                : h1 < 0.58 ? vec3(0.46, 0.35, 0.22)
+                : h1 < 0.80 ? vec3(0.52, 0.66, 0.30)
+                : vec3(0.22, 0.40, 0.17);
+      crop *= 0.88 + 0.24 * h2;
+      // Ploughed rows, only close up.
+      float rowFade = 1.0 - smoothstep(300.0, 1800.0, dist);
+      float rows = sin((h2 > 0.5 ? q.x : q.y) * 1.1) * 0.5 + 0.5;
+      crop *= 1.0 - 0.10 * rows * rowFade * step(0.3, h1) * (1.0 - step(0.58, h1) * step(h1, 0.62));
+      // Hedgerows along the edges.
+      vec2 edgeDist = min(f, 1.0 - f) * cellSize;
+      float e = min(edgeDist.x, edgeDist.y);
+      float aa = length(fwidth(q)) * 1.2;
+      float hedge = 1.0 - smoothstep(0.9 + aa * 0.5, 2.6 + aa, e);
+      hedge *= 1.0 - smoothstep(2500.0, 9000.0, dist);
+      crop = mix(crop, vec3(0.14, 0.26, 0.11), hedge * 0.75);
+      col = mix(col, crop * (0.92 + 0.16 * macro), fieldW * 0.9);
+    }
+  }
+
   // Rock on steep slopes and above the meadows.
   float rockiness = smoothstep(0.14, 0.3, slope + 0.1 * (mid - 0.5));
   rockiness = max(rockiness, smoothstep(1150.0, 1450.0, h + 200.0 * (macro - 0.5)) * 0.85);
@@ -117,7 +157,41 @@ const FRAGMENT_COLOR = /* glsl */ `
   col *= mix(1.0, 0.8 + 0.4 * d1, nearFade * 0.9);
   col *= mix(1.0, 0.88 + 0.24 * d2, fineFade);
   col *= 0.92 + 0.16 * macro;
+  // Grass grain at every range: a speckle whose cells stay about 2-3 pixels wide, stepping up by octaves with
+  // distance (like mipmaps for noise) and crossfading between steps, so it neither swims nor turns to blur.
+  {
+    float px = max(dist * 0.0018 * 2.5, 0.2);
+    float lv = log2(px / 0.2);
+    float s0 = 0.2 * exp2(floor(lv));
+    float mixT = smoothstep(0.0, 1.0, fract(lv));
+    float n0 = tHash(floor(wp / s0));
+    float n1 = tHash(floor(wp / (s0 * 2.0)) + 91.0);
+    float speck = mix(n0, n1, mixT) - 0.5;
+    float amp = 0.34 * (1.0 - smoothstep(500.0, 3500.0, dist)) * (1.0 - 0.75 * rockiness) * (1.0 - snow * 0.6);
+    col *= 1.0 + amp * speck;
+  }
   diffuseColor.rgb *= col;
+}
+`
+
+const FRAGMENT_NORMAL = /* glsl */ `
+// Fine relief: a tilt of the normal from the detail noise, so the ground catches low sun instead of reading flat.
+{
+  float bf = 1.0 - smoothstep(40.0, 900.0, length(vTerrainPos - cameraPosition));
+  if (bf > 0.0) {
+    vec2 bp = vTerrainPos.xz * 0.32;
+    float e = 0.45;
+    float n0 = tNoise(bp);
+    vec3 tilt = vec3(tNoise(bp + vec2(e, 0.0)) - n0, 0.0, tNoise(bp + vec2(0.0, e)) - n0) * (-1.1 * bf);
+    normal = normalize(normal + (viewMatrix * vec4(tilt, 0.0)).xyz);
+  }
+  float bg = 1.0 - smoothstep(6.0, 70.0, length(vTerrainPos - cameraPosition));
+  if (bg > 0.0) {
+    vec2 bp2 = vTerrainPos.xz * 2.4;
+    float m0 = tNoise(bp2);
+    vec3 tilt2 = vec3(tNoise(bp2 + vec2(0.35, 0.0)) - m0, 0.0, tNoise(bp2 + vec2(0.0, 0.35)) - m0) * (-1.6 * bg);
+    normal = normalize(normal + (viewMatrix * vec4(tilt2, 0.0)).xyz);
+  }
 }
 `
 
@@ -128,13 +202,15 @@ export function createTerrainMaterial(): MeshStandardMaterial {
   for (const [name, hex] of Object.entries(PALETTE)) uniforms[name] = { value: new Color(hex) }
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms)
+    shader.uniforms.uAirports = { value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${VERTEX_PARS}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERTEX_MAIN}`)
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${FRAGMENT_PARS}`)
+      .replace('#include <common>', `#include <common>\n#define AIRPORT_COUNT ${AIRPORTS.length}\n${FRAGMENT_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${FRAGMENT_COLOR}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAGMENT_NORMAL}`)
   }
-  material.customProgramCacheKey = () => 'flysim-terrain-v1'
+  material.customProgramCacheKey = () => 'flysim-terrain-v4'
   return material
 }

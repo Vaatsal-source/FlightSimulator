@@ -9,6 +9,8 @@ const SILHOUETTES: Record<AircraftId, string> = {
   f22: 'M96 30 L72 26 L50 8 L34 8 L42 26 L20 24 L8 18 L6 24 L14 30 L6 36 L8 42 L20 36 L42 34 L34 52 L50 52 L72 34 Z',
   // Narrow-body twin with swept wing.
   a220: 'M96 30 C90 27 80 27 70 27 L44 8 L36 8 L46 27 L14 27 L6 20 L4 20 L8 30 L4 40 L6 40 L14 33 L46 33 L36 52 L44 52 L70 33 C80 33 90 33 96 30 Z',
+  // Narrow-body with sharklets.
+  a320: 'M96 30 C90 27 80 27 70 27 L44 8 L36 8 L46 27 L14 27 L7 19 L5 19 L8 30 L5 41 L7 41 L14 33 L46 33 L36 52 L44 52 L70 33 C80 33 90 33 96 30 Z',
   // Wide-body twin, longer, bigger sweep.
   a350: 'M98 30 C92 27 82 27 70 27 L40 4 L30 4 L42 27 L12 27 L4 19 L2 19 L7 30 L2 41 L4 41 L12 33 L42 33 L30 56 L40 56 L70 33 C82 33 92 33 98 30 Z',
   // Business jet: aft engines, swept wing, T-tail.

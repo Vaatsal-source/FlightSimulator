@@ -458,6 +458,7 @@ export function createChallenge(
 ): Challenge {
   switch (mode) {
     case 'freeFlight':
+    case 'gate':
       return new FreeFlightChallenge(mode)
     case 'takeoff':
       return new TakeoffChallenge(place, aircraftId)

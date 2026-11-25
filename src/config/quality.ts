@@ -25,6 +25,8 @@ export interface QualityProfile {
   fogFar: number
   /** Device-pixel-ratio cap for the canvas. */
   maxDpr: number
+  /** AI airliners flying between the airports. */
+  trafficCount: number
   /** 'animated' = wave shader with sun glint; 'simple' = flat tinted plane. */
   waterDetail: 'simple' | 'animated'
 }
@@ -40,6 +42,7 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     shadowMapSize: 1024,
     fogFar: 14000,
     maxDpr: 1,
+    trafficCount: 2,
     waterDetail: 'simple',
   },
   medium: {
@@ -52,6 +55,7 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     shadowMapSize: 2048,
     fogFar: 22000,
     maxDpr: 1.5,
+    trafficCount: 5,
     waterDetail: 'animated',
   },
   high: {
@@ -64,6 +68,7 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     shadowMapSize: 4096,
     fogFar: 32000,
     maxDpr: 2,
+    trafficCount: 8,
     waterDetail: 'animated',
   },
 }

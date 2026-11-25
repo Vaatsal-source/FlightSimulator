@@ -8,6 +8,7 @@ import { inMultiplayer, sendRespawn, useMultiplayerStore } from '../state/multip
 import { FlightWorld } from '../world/FlightWorld'
 import { getTerrainSampler } from '../world/terrain/terrainSampler'
 import { FlightSession } from './FlightSession'
+import { PerfOverlay, PerfProbe } from './PerfOverlay'
 import { SimulationDriver } from './SimulationDriver'
 
 function flightKeysActive(): boolean {
@@ -117,6 +118,7 @@ export function FlightCanvas() {
         camera={{ fov: 65, near: 0.2, far: 60000 }}
       >
         <SimulationDriver session={session} audio={audio} />
+        <PerfProbe />
         <FlightWorld
           renderState={session.renderState}
           terrain={terrain}
@@ -127,6 +129,7 @@ export function FlightCanvas() {
           timeOfDay={timeOfDay}
         />
       </Canvas>
+      <PerfOverlay />
     </div>
   )
 }

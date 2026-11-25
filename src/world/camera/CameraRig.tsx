@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
+import { Euler, PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { getAircraft, type AircraftId } from '../../config/aircraftCatalog'
 import type { CameraMode } from '../../game/types'
 import type { AircraftRenderState, TerrainSampler } from '../../simulation/types'
+import { getTelemetry } from '../../state/telemetry'
+import { HeadMotion, LOOK_PITCH_MAX, LOOK_PITCH_MIN, LOOK_YAW_LIMIT } from '../cockpit/headMotion'
 
-const FOV: Record<CameraMode, number> = { chase: 62, cockpit: 78, free: 60 }
+const FOV: Record<CameraMode, number> = { chase: 62, cockpit: 72, free: 60 }
 const MIN_ABOVE_GROUND = 2
 const CHASE_OFFSET_K = 3.5 // 1/s, damping of the camera swing
 const CHASE_LOOK_K = 6
@@ -24,8 +26,14 @@ const _fh = new Vector3()
 const _target = new Vector3()
 const _look = new Vector3()
 const _eye = new Vector3()
+const _headEuler = new Euler(0, 0, 0, 'YXZ')
+const _headQ = new Quaternion()
 
 interface RigState {
+  /** Cockpit: the pilot's head (sag, bumps, look) and where a drag asks it to look. */
+  head: HeadMotion
+  lookYaw: number
+  lookPitch: number
   teleportId: number
   aircraftId: AircraftId | null
   mode: CameraMode | null
@@ -54,6 +62,9 @@ export function CameraRig({ renderState, terrain, mode, mouseSensitivity }: Came
   const limits = useRef({ min: 8, max: 80 })
 
   const rig = useRef<RigState>({
+    head: new HeadMotion(),
+    lookYaw: 0,
+    lookPitch: 0,
     teleportId: Number.NaN,
     aircraftId: null,
     mode: null,
@@ -67,7 +78,7 @@ export function CameraRig({ renderState, terrain, mode, mouseSensitivity }: Came
 
   // Free-look pointer controls.
   useEffect(() => {
-    if (mode !== 'free') return
+    if (mode === 'chase') return
     const el = gl.domElement
     let dragging = false
     let lastX = 0
@@ -86,13 +97,23 @@ export function CameraRig({ renderState, terrain, mode, mouseSensitivity }: Came
       if (!dragging) return
       const r = rig.current
       const k = 0.005 * sens.current
-      r.yaw -= (e.clientX - lastX) * k
-      r.pitch = Math.max(-1.45, Math.min(1.45, r.pitch + (e.clientY - lastY) * k))
+      if (mode === 'cockpit') {
+        // Look where you drag; the head returns to centre on release.
+        r.lookYaw = Math.max(-LOOK_YAW_LIMIT, Math.min(LOOK_YAW_LIMIT, r.lookYaw + (e.clientX - lastX) * k))
+        r.lookPitch = Math.max(LOOK_PITCH_MIN, Math.min(LOOK_PITCH_MAX, r.lookPitch - (e.clientY - lastY) * k))
+      } else {
+        r.yaw -= (e.clientX - lastX) * k
+        r.pitch = Math.max(-1.45, Math.min(1.45, r.pitch + (e.clientY - lastY) * k))
+      }
       lastX = e.clientX
       lastY = e.clientY
     }
     const up = (e: PointerEvent) => {
       dragging = false
+      if (mode === 'cockpit') {
+        rig.current.lookYaw = 0
+        rig.current.lookPitch = 0
+      }
       try {
         el.releasePointerCapture(e.pointerId)
       } catch {
@@ -100,6 +121,7 @@ export function CameraRig({ renderState, terrain, mode, mouseSensitivity }: Came
       }
     }
     const wheel = (e: WheelEvent) => {
+      if (mode === 'cockpit') return
       e.preventDefault()
       const r = rig.current
       r.dist = Math.max(limits.current.min, Math.min(limits.current.max, r.dist * Math.exp(e.deltaY * 0.001)))
@@ -158,10 +180,26 @@ export function CameraRig({ renderState, terrain, mode, mouseSensitivity }: Came
     r.aircraftId = rs.aircraftId
 
     if (mode === 'cockpit') {
+      if (snap) {
+        r.head.reset()
+        r.lookYaw = 0
+        r.lookPitch = 0
+      }
+      const tel = getTelemetry()
+      r.head.update({
+        dt,
+        gForce: tel.gForce,
+        touchdownAt: tel.touchdown ? tel.touchdown.simTime : null,
+        touchdownSink: tel.touchdown ? tel.touchdown.sink : 0,
+        lookYaw: r.lookYaw,
+        lookPitch: r.lookPitch,
+      })
       const e = info.geometry.eyePoint
-      _eye.set(e.x, e.y, e.z).applyQuaternion(_q)
+      _eye.set(e.x, e.y + r.head.y, e.z).applyQuaternion(_q)
       camera.position.set(p.x + _eye.x, p.y + _eye.y, p.z + _eye.z)
-      camera.quaternion.copy(_q)
+      // Looking right is a turn about -Y in the body frame.
+      _headEuler.set(r.head.pitch, -r.head.yaw, 0)
+      camera.quaternion.copy(_q).multiply(_headQ.setFromEuler(_headEuler))
     } else if (mode === 'chase') {
       // Desired swing offset: behind (mostly along the heading, a little along the
       // actual nose direction) and above.

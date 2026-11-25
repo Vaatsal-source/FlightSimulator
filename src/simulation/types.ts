@@ -201,6 +201,12 @@ export interface FlightModel {
   reset(spawn: SpawnState): void
   /** Crash now with `reason` (multiplayer collisions). No-op once crashed. */
   forceCrash(reason: string): void
+  /** Begin the engine start sequence. No-op while running, starting or crashed. */
+  startEngines(): void
+  /** Shut the engines down at once. */
+  stopEngines(): void
+  /** 0 when the engines are off or running, 0..1 during a start. */
+  readonly engineStartProgress: number
 }
 
 /**

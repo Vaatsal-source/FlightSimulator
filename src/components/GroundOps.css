@@ -1,0 +1,94 @@
+.ground-ops {
+  position: absolute;
+  left: 12px;
+  top: 268px;
+  width: min(340px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 10px 12px 9px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  pointer-events: none;
+  z-index: 5;
+}
+.go-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.go-phase {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hud);
+}
+.go-phase[data-phase='holdShort'] { color: #ffb52e; }
+.go-count { color: var(--text-dim); }
+.go-atc { margin: 0 0 6px; }
+.go-warning {
+  margin: 0 0 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(255, 181, 46, 0.16);
+  color: #ffc766;
+}
+.go-start {
+  position: relative;
+  height: 18px;
+  margin-bottom: 7px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.go-start-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(60, 240, 122, 0.4);
+  transition: width 0.25s linear;
+}
+.go-start span {
+  position: relative;
+  padding-left: 7px;
+  font-size: 0.72rem;
+  line-height: 18px;
+}
+.go-taxi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.go-arrow {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  fill: var(--hud);
+  transition: transform 0.15s linear;
+}
+.go-sub { color: var(--text-dim); font-size: 0.72rem; }
+.go-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px 14px;
+  margin: 0 0 7px;
+  padding: 0;
+  list-style: none;
+  color: var(--text-dim);
+}
+.go-list .done { color: var(--hud); }
+.go-keys { color: var(--text-dim); font-size: 0.72rem; }
+.go-keys kbd {
+  padding: 0 5px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.go-keys em { margin-left: 8px; color: #ffc766; font-style: normal; }
+@media (max-width: 640px) {
+  .ground-ops { top: auto; bottom: 8px; }
+}

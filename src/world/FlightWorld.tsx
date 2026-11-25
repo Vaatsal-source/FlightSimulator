@@ -3,7 +3,9 @@ import { useMultiplayerStore } from '../state/multiplayerStore'
 import { RemoteAircraft } from './remote/RemoteAircraft'
 import { AircraftModel } from './aircraft/AircraftModel'
 import { Airports } from './airport/Airports'
+import { TaxiRoute } from './airport/TaxiRoute'
 import { CameraRig } from './camera/CameraRig'
+import { CockpitModel } from './cockpit/CockpitModel'
 import { Clouds } from './environment/Clouds'
 import { environmentFor } from './environment/constants'
 import { Lighting } from './environment/Lighting'
@@ -11,6 +13,7 @@ import { Sky } from './environment/Sky'
 import { Water } from './environment/Water'
 import { Rings } from './rings/Rings'
 import { TerrainSystem } from './terrain/TerrainSystem'
+import { TrafficFleet } from './traffic/TrafficFleet'
 import type { FlightWorldProps } from './types'
 
 /**
@@ -51,9 +54,12 @@ function WorldContent({
       <TerrainSystem terrain={terrain} profile={profile} />
       <Water profile={profile} timeOfDay={timeOfDay} />
       <Airports shadows={profile.shadows} />
+      <TaxiRoute />
       <Clouds profile={profile} timeOfDay={timeOfDay} />
+      <TrafficFleet terrain={terrain} profile={profile} />
       {rings && <Rings course={rings} />}
       <AircraftModel renderState={renderState} cameraMode={cameraMode} shadows={profile.shadows} />
+      {cameraMode === 'cockpit' && <CockpitModel renderState={renderState} />}
       {hasOtherPilots && <RemoteAircraft terrain={terrain} shadows={profile.shadows} />}
     </>
   )

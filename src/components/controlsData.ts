@@ -16,6 +16,8 @@ export const FLIGHT_BINDINGS: readonly Binding[] = [
   { action: 'Speed brake toggle', keys: 'V' },
   { action: 'Reverse thrust (hold, on the ground)', keys: 'Y' },
   { action: 'Elevator trim nose up / down', keys: '. / ,' },
+  { action: 'Engines: start (about 30 s on a jet) / shut down on the ground', keys: 'N' },
+  { action: 'Parking brake set / release', keys: 'K' },
   { action: 'Landing assist: fly the approach to the runway ahead down to 100 ft, then hand over for the flare (press again to cancel)', keys: '0' },
 ]
 

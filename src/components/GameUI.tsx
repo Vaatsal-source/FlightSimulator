@@ -11,6 +11,7 @@ import { FlightSchool } from './FlightSchool'
 import { Hangar } from './Hangar'
 import { HowItWorks } from './HowItWorks'
 import { Hud } from './Hud'
+import { GroundOpsPanel } from './GroundOpsPanel'
 import { InstrumentPanel } from './Instruments'
 import { MainMenu } from './MainMenu'
 import { MultiplayerHud } from './MultiplayerHud'
@@ -422,7 +423,8 @@ export function GameUI() {
   const overlay = useGameStore((s) => s.overlay)
   const paused = useGameStore((s) => s.paused)
   const showHud = useGameStore((s) => s.settings.showHud)
-  const showInstruments = useGameStore((s) => s.settings.showInstruments)
+  // The 3D flight deck replaces the flat gauges in the cockpit view.
+  const showInstruments = useGameStore((s) => s.settings.showInstruments && s.cameraMode !== 'cockpit')
   const online = useMultiplayerStore(
     (s) => s.status === 'inSky' || s.status === 'reconnecting' || s.connectionLost,
   )
@@ -437,6 +439,7 @@ export function GameUI() {
         <>
           {showHud && <Hud />}
           {showInstruments && <InstrumentPanel />}
+          <GroundOpsPanel />
           {online && <MultiplayerHud />}
           {paused && <PauseMenu />}
         </>
