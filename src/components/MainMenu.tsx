@@ -15,28 +15,94 @@ interface Action {
   run(): void
 }
 
-/** Animated sky behind the menu: pure CSS/SVG, tinted by the chosen time of day. */
+/** Runway in perspective: dashes and edge lights shrinking towards the vanishing point (600, 0). */
+const RUNWAY_ROWS = Array.from({ length: 11 }, (_, k) => {
+  const y = (v: number) => 500 * Math.pow(v / 11, 2.1)
+  const y1 = y(k + 0.15)
+  const y2 = y(k + 0.65)
+  const w = (yy: number) => 1 + 13 * (yy / 500)
+  const edge = (yy: number) => 3 + 447 * (yy / 500)
+  return { k, y1, y2, w1: w(y1), w2: w(y2), edge: edge(y2), r: 1.2 + 5 * (y2 / 500) }
+})
+
+const TERMINAL_WINDOWS = Array.from({ length: 34 }, (_, i) => i)
+
+/** The view down the runway at an airport, pure CSS/SVG, tinted by the chosen time of day. */
 function Backdrop() {
   const aircraftId = useGameStore((s) => s.aircraftId)
   return (
     <div className="menu-sky" aria-hidden="true">
+      <div className="menu-stars" />
       <div className="menu-sun" />
       <div className="menu-clouds far" />
       <div className="menu-clouds near" />
-      <svg className="menu-ridge" viewBox="0 0 1200 200" preserveAspectRatio="none">
-        <path d="M0 200 L0 120 C90 90 160 60 260 82 C360 104 420 40 540 52 C640 62 720 110 820 96 C930 80 1040 30 1200 74 L1200 200 Z" />
-      </svg>
-      <svg className="menu-airfield" viewBox="0 0 300 60" aria-hidden="true">
-        <path d="M0 60 L0 48 L40 48 L40 36 L70 36 L70 48 L120 48 L120 30 L126 30 L126 14 L132 14 L132 30 L138 30 L138 48 L190 48 L190 40 L240 40 L240 48 L300 48 L300 60 Z" />
-        <path className="menu-runway" d="M20 56 L280 56" />
-      </svg>
-      <svg className="menu-island" viewBox="0 0 1200 200" preserveAspectRatio="none">
-        <path d="M0 200 L0 150 C120 140 200 90 320 100 C420 108 470 60 560 70 C660 80 700 130 820 120 C930 110 1010 140 1200 135 L1200 200 Z" />
-      </svg>
-      <div className="menu-sea" />
       <div className="menu-flyby">
         <AircraftIcon id={aircraftId} />
       </div>
+      <svg className="menu-skyline" viewBox="0 0 1200 120" preserveAspectRatio="xMidYMax slice">
+        {/* Terminal with its glass face, a tower, a hangar, fuel tanks and parked jets on the apron. */}
+        <rect className="sk-far" x="0" y="96" width="1200" height="24" />
+        <rect className="sk-building" x="40" y="74" width="420" height="30" />
+        <rect className="sk-roof" x="40" y="70" width="420" height="5" />
+        {TERMINAL_WINDOWS.map((i) => (
+          <rect key={i} className="sk-window" x={50 + i * 12} y="82" width="7" height="6" style={{ animationDelay: `${(i * 0.37) % 5}s` }} />
+        ))}
+        <rect className="sk-building" x="470" y="80" width="90" height="24" />
+        <path className="sk-building" d="M120 74 V72 H150 V74 Z" />
+        <rect className="sk-building" x="640" y="58" width="9" height="46" />
+        <path className="sk-building" d="M634 58 L655 58 L660 46 L629 46 Z" />
+        <rect className="sk-window" x="632" y="49" width="26" height="4" />
+        <circle className="sk-beacon" cx="644.5" cy="43" r="2.2" />
+        <rect className="sk-building" x="760" y="78" width="110" height="26" />
+        <path className="sk-roof" d="M756 78 Q815 62 874 78 Z" />
+        <ellipse className="sk-tank" cx="940" cy="92" rx="16" ry="12" />
+        <ellipse className="sk-tank" cx="978" cy="92" rx="16" ry="12" />
+        <ellipse className="sk-tank" cx="1016" cy="92" rx="16" ry="12" />
+        {[210, 330, 1080].map((x) => (
+          <g key={x} className="sk-jet" transform={`translate(${x} 100)`}>
+            <ellipse cx="0" cy="-5" rx="30" ry="4.6" />
+            <path d="M24 -6 L36 -22 L40 -22 L34 -5 Z" />
+            <path d="M-4 -5 L-14 3 L4 3 Z" />
+          </g>
+        ))}
+      </svg>
+      <svg className="menu-runway-view" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <linearGradient id="menu-asphalt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2b2f38" />
+            <stop offset="1" stopColor="#15171c" />
+          </linearGradient>
+        </defs>
+        <rect className="rv-ground" x="0" y="0" width="1200" height="500" />
+        {/* Taxiway to the right with its blue edge lights, and a stand with its yellow line. */}
+        <polygon className="rv-taxi" points="640,0 660,0 1150,500 880,500" />
+        {RUNWAY_ROWS.map((r) => (
+          <circle key={`b${r.k}`} className="rv-blue" cx={600 + r.edge * 1.95} cy={r.y2} r={r.r * 0.7} />
+        ))}
+        <polygon className="rv-runway" points="598,0 602,0 1050,500 150,500" fill="url(#menu-asphalt)" />
+        <polygon className="rv-edge" points="598,0 599,0 150,500 146,500" />
+        <polygon className="rv-edge" points="602,0 601,0 1050,500 1054,500" />
+        {RUNWAY_ROWS.map((r) => (
+          <polygon
+            key={`d${r.k}`}
+            className="rv-dash"
+            points={`${600 - r.w1 / 2},${r.y1} ${600 + r.w1 / 2},${r.y1} ${600 + r.w2 / 2},${r.y2} ${600 - r.w2 / 2},${r.y2}`}
+          />
+        ))}
+        {/* Threshold bars near the viewer. */}
+        {[-5, -4, -3, -2, 2, 3, 4, 5].map((n) => (
+          <polygon key={`t${n}`} className="rv-dash" points={`${600 + n * 52 - 11},392 ${600 + n * 52 + 11},392 ${600 + n * 60 + 15},470 ${600 + n * 60 - 15},470`} />
+        ))}
+        {RUNWAY_ROWS.map((r) => (
+          <g key={`l${r.k}`}>
+            <circle className="rv-light" cx={600 - r.edge} cy={r.y2} r={r.r} style={{ animationDelay: `${(10 - r.k) * 0.12}s` }} />
+            <circle className="rv-light" cx={600 + r.edge} cy={r.y2} r={r.r} style={{ animationDelay: `${(10 - r.k) * 0.12}s` }} />
+            <circle className="rv-green" cx={600 - r.edge * 1.04} cy={r.y2} r={r.r * 0.6} />
+          </g>
+        ))}
+      </svg>
+      <div className="menu-haze" />
+      <div className="menu-vignette" />
     </div>
   )
 }
@@ -209,7 +275,7 @@ export function MainMenu() {
       <div className="menu-layout">
         <div className="panel menu-hero">
           <h1 className="title">FlySim</h1>
-          <p className="subtitle">Island flight simulator</p>
+          <p className="subtitle">Flight simulator</p>
           <div className="menu-actions">
             {primary.map((a, i) => (
               <div key={a.label} className="menu-action">
@@ -245,28 +311,6 @@ export function MainMenu() {
           <PilotLog />
         </div>
       </div>
-      <MenuFooter />
     </div>
-  )
-}
-
-const REPO_URL = 'https://github.com/SingeyDorje21/flysim'
-
-function MenuFooter() {
-  return (
-    <footer className="menu-footer">
-      <a className="panel menu-footer-card" href={REPO_URL} target="_blank" rel="noopener noreferrer">
-        <svg className="github-mark" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-        </svg>
-        <span className="menu-footer-text">
-          <strong>FlySim is open source</strong>
-          <span>Want to add something? Open a pull request on GitHub.</span>
-        </span>
-        <span className="menu-footer-cta">
-          Contribute <span aria-hidden="true">→</span>
-        </span>
-      </a>
-    </footer>
   )
 }
