@@ -1,0 +1,55 @@
+{
+  "name": "flysim",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source island flight simulator that runs in the browser",
+  "license": "MIT",
+  "author": "Singey Dorje",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SingeyDorje21/flysim.git"
+  },
+  "homepage": "https://github.com/SingeyDorje21/flysim#readme",
+  "bugs": "https://github.com/SingeyDorje21/flysim/issues",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p server/tsconfig.json",
+    "server": "tsx server/index.ts",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@vercel/analytics": "^2.0.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.186.1",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.0",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}
