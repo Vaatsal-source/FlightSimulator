@@ -147,12 +147,21 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 - **Terrain:** Copernicus GLO-30 (free licence, attribution) or Mapzen/AWS Terrarium tiles (no key; confirm attribution before shipping). Tested: one z8 Terrarium tile decodes with
   `h = r*256 + g + b/256 - 32768` (Swiss Alps tile: 45-3550 m) and packs to ~90 kB with brotli. Plan: pre-process offline into chunks for the existing streaming terrain, never call a live service in-game.
 
+## Airport revamp, wind, pushback, ground traffic, scenery (part 3)
+- **Airport look** (`world/airport/airportDetail.ts`, `AirportProps.tsx`, `vehicleGeometry.ts`): glass curtain-wall terminals with piers, control tower, hangars, fuel farm, car parks with parked cars, stand lines, apron markings; ground vehicles (tractors, baggage carts, fuel trucks, buses, stairs, catering) instanced; real airliner models parked at the gates (shared glTF cache with the AI traffic). Larger aprons and extra parallel runways at the big fields. Verified on screen at Harbor and Central.
+- **Wind** (`game/wind.ts`, `AircraftPhysics.setWind`): settings `calm/light/moderate/strong` (0, 9, 18, 30 kt mean) with gusts and a slowly veering direction that sits 20-60 degrees off each airport's runway, so there is always some crosswind. The flight model uses air-relative velocity for aerodynamics and air data, ground-relative velocity for the gear. HUD WIND row, Settings > Wind, animated windsocks at every airfield (`Windsocks.tsx`), turbine rotors face the wind.
+- **Pushback** (`game/pushback.ts`, `AircraftPhysics.setTug`): from the stand with the turnaround finished and the engines off, press `T`; the tug drags the aircraft tail-first about 55 m while swinging the nose towards the taxiway, then stops with the parking brake set. `T` again calls it off. The engines cannot be started while pushing.
+- **Ground traffic** (`game/groundTraffic.ts`, `world/traffic/GroundTraffic.tsx`): two airliners taxi in from behind the stand, wait at the hold-short line, line up and take off on a repeating cycle (closed form in simulation time). The player gets a "traffic ahead" warning inside 90 m and a "too close" warning inside 30 m, and the tower holds the take-off clearance while an aircraft is on the runway. Departures only (not arrival mode).
+- **Scenery** (`world/scenery/`): about 40 villages (houses, church or silo), roads draped over the ground between them, wind farms on high ground and red-lit radio masts, all kept off the airports, approach corridors and water.
+- **Cockpit polish:** seats with bolsters, armrests and harnesses, rudder pedals, warning lights, sun visors, pedestal levers and trim wheels, overhead module frames, ceiling fittings, window seals, yoke and stick grips (all three styles).
+- **Not done / honest limits:** no ATC wind calls on arrival, no taxi conflict physics (traffic is a warning, not a collision), ground traffic does not appear in arrival mode, the new maps (real-terrain pipeline) are still only prototyped, only the player's gate has a working jet bridge, wind gusts are not applied to AI traffic. Terrain footprint tests for the enlarged airports were re-run in the background.
+
 ## Tooling note
 - On this machine `vitest run` fails in the default pool ("Cannot read properties of undefined (reading 'config')"); use `--pool=vmThreads`.
   Under that pool the heavy terrain tests need `--testTimeout=240000`, and the sampler's 400 ms wall-clock budget can fail on a slow machine.
 
 ## Known limitations
-- No wind, prop torque/P-factor or asymmetric stall wing-drop; gear force is vertical.
+- No prop torque/P-factor or asymmetric stall wing-drop; gear force is vertical.
 - No audio, gamepad or touch controls; keyboard + mouse (free-look) only.
 - No 3D cockpit panel (cockpit view uses the 2D instrument overlay).
 - Real-time FPS could not be measured: the in-app browser pane was backgrounded (rAF throttled to ~1 Hz).

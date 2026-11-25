@@ -3,6 +3,7 @@ import { QUALITY_LEVELS } from '../config/quality'
 import { GAME_MODES } from '../game/modes'
 import { CAMERA_MODES, LESSON_MODES, type GameMode } from '../game/types'
 import { useGameStore, type Units } from '../state/gameStore'
+import { WIND_SETTINGS } from '../game/wind'
 import { TIMES_OF_DAY, WEATHERS } from '../world/types'
 import { AirportPicker, SetupSummary } from './AirportPicker'
 import { AFTERBURNER_NOTE, ALL_BINDINGS } from './controlsData'
@@ -278,6 +279,14 @@ function SettingsPanel() {
             value={settings.weather}
             options={WEATHERS}
             onChange={(weather) => updateSettings({ weather })}
+          />
+        </Field>
+        <Field label="Wind">
+          <Segmented
+            label="Wind"
+            value={settings.wind}
+            options={WIND_SETTINGS}
+            onChange={(wind) => updateSettings({ wind })}
           />
         </Field>
         <Field label="Default camera">

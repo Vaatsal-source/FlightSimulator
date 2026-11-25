@@ -71,9 +71,9 @@ export const AIRPORTS: readonly AirportDef[] = [
     center: { x: -31500, z: 11000 },
     elevation: 24,
     runways: [
-      { headingDeg: 90, length: 3400, width: 60 },
-      { headingDeg: 90, length: 2900, width: 45, along: 0, across: -400 },
-      { headingDeg: 90, length: 2500, width: 45, along: 150, across: -800 },
+      { headingDeg: 90, length: 3800, width: 60 },
+      { headingDeg: 90, length: 3300, width: 45, along: 0, across: -420 },
+      { headingDeg: 90, length: 2900, width: 45, along: 150, across: -840 },
     ],
   },
   {
@@ -84,9 +84,9 @@ export const AIRPORTS: readonly AirportDef[] = [
     center: { x: 8000, z: -36250 },
     elevation: 31,
     runways: [
-      { headingDeg: 90, length: 3200, width: 60 },
-      { headingDeg: 90, length: 2700, width: 45, along: 0, across: -400 },
-      { headingDeg: 90, length: 2400, width: 45, along: 150, across: -800 },
+      { headingDeg: 90, length: 3600, width: 60 },
+      { headingDeg: 90, length: 3100, width: 45, along: 0, across: -420 },
+      { headingDeg: 90, length: 2700, width: 45, along: 150, across: -840 },
     ],
   },
   {
@@ -99,6 +99,7 @@ export const AIRPORTS: readonly AirportDef[] = [
     runways: [
       { headingDeg: 90, length: 2800, width: 45 },
       { headingDeg: 0, length: 2000, width: 45, along: 900, across: 0 },
+      { headingDeg: 90, length: 2300, width: 45, along: 0, across: -380 },
     ],
   },
   {

@@ -16,6 +16,10 @@ import { approachGuidance, getRunwayEnd, nearestAirport } from '../game/airportG
 import { createChallenge, type Challenge } from '../game/challenges'
 import { newTurnaround, type GateServices } from '../game/gateServices'
 import { ArrivalOps, planArrivalRoute } from '../game/arrivalOps'
+import { AIRPORTS } from '../config/airports'
+import { GroundTraffic, type TrafficPose } from '../game/groundTraffic'
+import { PUSH_DISTANCE, Pushback, pushbackTarget } from '../game/pushback'
+import { windFor, type WindSetting, type WindState } from '../game/wind'
 import { GateServices as ServicesClass } from '../game/gateServices'
 import { GroundOps, planTaxiRoute, type GroundInputs, type GroundView } from '../game/groundOps'
 import { computeLoadSheet, defaultLoading, fuelBurnKg, type Loading } from '../game/loading'
@@ -108,6 +112,14 @@ export class FlightSession {
   /** The turnaround at the stand (gate departure), and otherwise the plain load the aircraft flies with. */
   private services: GateServices | null = null
   private loading: Loading | null = null
+  /** The tug at work (gate departure), and the route it leaves towards. */
+  private pushback: Pushback | null = null
+  private gateRoute: import('../game/groundOps').TaxiRoute | null = null
+  private pushTogglesSeen = 0
+  private traffic: GroundTraffic | null = null
+  private readonly trafficScratch: TrafficPose = { visible: false, x: 0, z: 0, headingDeg: 0, lift: 0, pitchDeg: 0, speed: 0, model: 0, waiting: false, onRunway: false }
+  private windSetting: WindSetting = 'calm'
+  private windNow: WindState = { x: 0, z: 0, speed: 0, fromDeg: 0 }
   private burnAccum = 0
   private outOfFuel = false
   private loadDirty = false
@@ -183,10 +195,25 @@ export class FlightSession {
     this.terrainTarget = terrain
   }
 
+  /** The wind strength; takes effect immediately (its direction follows the airport). */
+  setWindSetting(setting: WindSetting): void {
+    this.windSetting = setting
+    this.applyWind(this.physics.state.simTime)
+  }
+
+  /** Feed the wind at `timeS` to the physics. */
+  private applyWind(timeS: number): void {
+    const airport = AIRPORTS.find((a) => a.id === this.place.airportId) ?? AIRPORTS[0]
+    this.windNow = windFor(this.windSetting, airport.id, airport.runways[0].headingDeg, timeS)
+    this.physics.setWind(this.windNow.x, this.windNow.z)
+  }
+
   /** Back to the spawn of `mode` at `place` with no leftover state. */
   reset(mode: GameMode = this.mode, place: FlightPlace = this.place): void {
     this.mode = mode
     this.place = place
+    // Wind first, so an airborne spawn keeps its airspeed.
+    this.applyWind(0)
     this.physics.reset(this.spawnAt(mode, place))
     this.timestep.reset()
     this.challenge = createChallenge(mode, this.ringView, place, this.aircraftId)
@@ -208,8 +235,14 @@ export class FlightSession {
     this.assistRequestsSeen = useAutopilotStore.getState().assistRequests
     this.engineTogglesSeen = this.keyboard.engineToggles
     this.parkingTogglesSeen = this.keyboard.parkingBrakeToggles
+    this.pushTogglesSeen = this.keyboard.pushbackToggles
+    this.pushback = null
+    this.gateRoute = null
+    this.traffic = null
     if (mode === 'gate') {
       const route = planTaxiRoute(place, this.aircraftId)
+      this.gateRoute = route
+      this.traffic = new GroundTraffic(route)
       this.services = newTurnaround(this.aircraftId)
       this.groundOps = new GroundOps(route, getAircraft(this.aircraftId).takeoffFlaps, this.services !== null)
       this.parkingBrake = true
@@ -556,7 +589,15 @@ export class FlightSession {
     if (this.assistsActive) this.applyTailStrikeGuard(controls)
     // The landing assist runs its own autothrust; the lesson's would fight it.
     if (!this.landingAssist.active) this.applyApproachAutothrust(controls, dt)
+    if (this.pushback) {
+      const cmd = this.pushback.update(dt, this.physics.state.headingDeg)
+      this.physics.setTug(cmd.speed, cmd.yawRate)
+      controls.brakes = 0
+      controls.throttle = 0
+      if (this.pushback.done) this.endPushback()
+    }
     this.physics.setControls(controls)
+    this.applyWind(this.physics.state.simTime)
     this.physics.step()
     const prev = this.physics.previousState
     if (this.physics.state.onGround && !prev.onGround) {
@@ -576,14 +617,37 @@ export class FlightSession {
       if (this.physics.engineStartProgress > 0) this.physics.stopEngines()
       else if (!s.engine.running) {
         // No fuel, no start; and not with the bridge attached or the doors open.
-        if (!blocked && !this.outOfFuel) this.physics.startEngines()
+        if (!blocked && !this.outOfFuel && this.pushback === null) this.physics.startEngines()
       } else if (s.onGround && s.groundSpeed < 3) this.physics.stopEngines()
+    }
+    if (kb.pushbackToggles !== this.pushTogglesSeen) {
+      this.pushTogglesSeen = kb.pushbackToggles
+      if (this.pushback) this.endPushback()
+      else this.beginPushback()
     }
     if (kb.parkingBrakeToggles !== this.parkingTogglesSeen) {
       this.parkingTogglesSeen = kb.parkingBrakeToggles
       // The brake stays on until the turnaround is finished.
       if (!(this.parkingBrake && this.services !== null && !this.services.view.ready)) this.parkingBrake = !this.parkingBrake
     }
+  }
+
+  /** The tug starts: only from the stand with the turnaround finished and the engines off. */
+  private beginPushback(): void {
+    const s = this.physics.state
+    const route = this.gateRoute
+    if (!route || this.groundOps?.view.phase !== 'coldDark' || s.engine.running || this.physics.engineStartProgress > 0) return
+    if (this.services !== null && !this.services.view.ready) return
+    const h = (s.headingDeg * Math.PI) / 180
+    const from = { x: s.position.x - Math.sin(h) * PUSH_DISTANCE, z: s.position.z + Math.cos(h) * PUSH_DISTANCE }
+    this.pushback = new Pushback(pushbackTarget(s.headingDeg, from, route.points[2]))
+    this.parkingBrake = false
+  }
+
+  private endPushback(): void {
+    this.pushback = null
+    this.physics.setTug(0)
+    this.parkingBrake = true
   }
 
   /** The turnaround's clock and commands, and the fuel the engines burn. */
@@ -700,6 +764,7 @@ export class FlightSession {
       engineStart: this.physics.engineStartProgress,
       parkingBrake: this.parkingBrake,
       loading: this.loadingView(),
+      wind: { fromDeg: this.windNow.fromDeg, speed: this.windNow.speed },
       ground: this.groundOps
         ? this.withServices(this.groundOps.update({
             x: s.position.x,
@@ -715,6 +780,9 @@ export class FlightSession {
             time: s.simTime,
             servicesReady: this.services?.view.ready,
             servicesBlocker: this.services?.view.blocker,
+            pushing: this.pushback !== null,
+            traffic: this.traffic ? this.traffic.nearestAhead(s.simTime, s.position, s.headingDeg, this.trafficScratch) : null,
+            runwayBusy: this.traffic ? this.traffic.runwayBusy(s.simTime, this.trafficScratch) : false,
             loaded: this.services ? this.services.view.loading.pax > 0 && this.services.view.loading.fuelKg >= 1500 : undefined,
             servicesDone: this.services ? this.services.view.ready && this.services.view.loading.pax === 0 : undefined,
           }))

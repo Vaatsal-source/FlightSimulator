@@ -25,6 +25,7 @@ Take off, fly a circuit and grease the landing, from a light trainer to an A350.
 - **Landing assist** (press `0` near a runway): flies the approach and the 3° glide path down to 100 ft, then hands over for the flare, and goes around if the approach is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
 - **Gate departure and arrival:** start cold and dark at the stand, refuel and board through a working jet bridge, load within weight and balance limits, start up, taxi, take off; or land, taxi in, park and deplane
+- **Wind, pushback and traffic:** adjustable wind with gusts, windsocks, a tug pushback (`T`), and airliners taxiing and taking off around you
 - **Night and weather:** morning, noon, evening and night, with clear, overcast or fog
 - **Flight School:** guided take-off, landing and full-circuit lessons
 - **Challenges:** take-off, landing and ring courses, with best scores kept in your pilot log
@@ -64,6 +65,7 @@ Then open the local URL Vite prints (usually http://localhost:5173).
 | Toggle HUD / instruments       | `H` / `I`                                |
 | Engines start / stop           | `N`                                      |
 | Parking brake                  | `K`                                      |
+| Pushback tug (at the gate)     | `T`                                      |
 | Performance stats              | `F3`                                     |
 | Look around (cockpit view)     | drag the mouse                           |
 | World map                      | `M`                                      |

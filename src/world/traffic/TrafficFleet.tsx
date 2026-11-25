@@ -1,11 +1,11 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Group, MeshStandardMaterial, type Object3D } from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { Group } from 'three'
 import type { QualityProfile } from '../../config/quality'
 import type { TerrainSampler } from '../../simulation/types'
 import { useGameStore } from '../../state/gameStore'
-import { modelScale, trafficModelFor, type TrafficModelId } from './trafficModels'
+import { instantiateTraffic, loadTrafficTemplate } from './trafficAssets'
+import { trafficModelFor } from './trafficModels'
 import { TrafficPlanner, type TrafficPose } from './trafficPlan'
 
 const DEG = Math.PI / 180
@@ -13,18 +13,6 @@ const DEG = Math.PI / 180
 interface Plane {
   index: number
   holder: Group
-}
-
-function disposeTree(root: Object3D): void {
-  root.traverse((o) => {
-    const mesh = o as { geometry?: { dispose(): void }; material?: unknown }
-    mesh.geometry?.dispose()
-    const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []
-    for (const m of mats as MeshStandardMaterial[]) {
-      m.map?.dispose()
-      m.dispose()
-    }
-  })
 }
 
 /**
@@ -42,63 +30,21 @@ export function TrafficFleet({ terrain, profile }: { terrain: TerrainSampler; pr
 
   useEffect(() => {
     let cancelled = false
-    const loader = new GLTFLoader()
-    const base = `${import.meta.env.BASE_URL}models/traffic/`
-    const loaded: Object3D[] = []
-    const templates = new Map<TrafficModelId, Object3D>()
-
     const specs = Array.from({ length: count }, (_, i) => trafficModelFor(i))
-    const wanted = [...new Map(specs.map((s) => [s.id, s])).values()]
     void Promise.all(
-      wanted.map(async (spec) => {
-        try {
-          const gltf = await loader.loadAsync(base + spec.file)
-          // Without an environment map a metallic material renders almost black.
-          gltf.scene.traverse((o) => {
-            const m = (o as { material?: MeshStandardMaterial }).material
-            if (m && 'metalness' in m) {
-              m.metalness = Math.min(m.metalness, 0.15)
-              m.roughness = Math.max(m.roughness, 0.55)
-              // Stand-in for sky light bouncing off the ground and clouds: a fill from the livery itself.
-              if (m.map) {
-                m.emissiveMap = m.map
-                m.emissive.setScalar(0.4)
-              }
-            }
-          })
-          if (cancelled) disposeTree(gltf.scene)
-          else {
-            templates.set(spec.id, gltf.scene)
-            loaded.push(gltf.scene)
-          }
-        } catch (err) {
-          console.warn(`Traffic model ${spec.file} failed to load`, err)
-        }
-      }),
-    ).then(() => {
-      if (cancelled) return
-      const made: Plane[] = []
-      specs.forEach((spec, index) => {
-        const template = templates.get(spec.id)
-        if (!template) return
-        const holder = new Group()
+      specs.map(async (spec, index) => {
+        const template = await loadTrafficTemplate(spec)
+        if (!template) return null
+        const holder = instantiateTraffic(spec, template)
         holder.rotation.order = 'YXZ'
         holder.visible = false
-        const fit = new Group()
-        fit.rotation.y = Math.PI / 2 // the files have their nose along +X
-        fit.scale.setScalar(modelScale(spec))
-        const inner = template.clone(true) // shares geometry and materials
-        inner.position.set(-spec.centreX, -spec.minY, -spec.centreZ)
-        fit.add(inner)
-        holder.add(fit)
-        made.push({ index, holder })
-      })
-      setPlanes(made)
+        return { index, holder }
+      }),
+    ).then((made) => {
+      if (!cancelled) setPlanes(made.filter((m): m is Plane => m !== null))
     })
-
     return () => {
       cancelled = true
-      for (const root of loaded) disposeTree(root)
       setPlanes([])
     }
   }, [count])

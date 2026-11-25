@@ -127,6 +127,19 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
   const leather = std(0x4a3d34, 0.7)
   const glareMat = std(0x1a1c21, 0.9)
   const carpet = std(0x15161a, 1)
+  const belt = std(0x23252b, 1)
+  const knobHat = std(0xc23a2e, 0.5)
+  const buckle = std(0xb7bcc6, 0.3, 0.8)
+  const rubber = std(0x0f1013, 1)
+  const brushed = std(0x7d838f, 0.35, 0.7)
+  const lamp = (color: number): MeshBasicMaterial => track(new MeshBasicMaterial({ color, toneMapped: false, fog: false }))
+  const red = lamp(0xe23b2e)
+  const amber = lamp(0xf0a82a)
+  const green = lamp(0x43e08a)
+  const white = lamp(0xe9edf2)
+  const knobYellow = std(0xd8b020, 0.5)
+  const knobRed = std(0xb02a24, 0.5)
+  const knobBlue = std(0x2f5fa8, 0.5)
 
   // ---- geometry helpers --------------------------------------------------
   const batches = new Map<Material, BufferGeometry[]>()
@@ -300,6 +313,18 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     box(root, 0.52, 0.09, 0.52, leather, [x, y - 0.32, z])
     box(root, 0.52, 0.7, 0.1, leather, [x, y, z + 0.26], [-0.12, 0, 0])
     box(root, 0.3, 0.2, 0.08, leather, [x, y + 0.42, z + 0.31])
+    // Side bolsters, armrests, a lumbar pad, the seat pan frame and its rails.
+    for (const sx of [-1, 1]) {
+      box(root, 0.06, 0.5, 0.09, leather, [x + sx * 0.28, y - 0.02, z + 0.24], [-0.12, 0, 0])
+      box(root, 0.07, 0.04, 0.34, trim, [x + sx * 0.33, y - 0.17, z - 0.02])
+      box(root, 0.05, 0.14, 0.05, trim, [x + sx * 0.33, y - 0.25, z + 0.12])
+      box(root, 0.04, 0.05, 0.62, plastic, [x + sx * 0.2, y - 0.4, z])
+    }
+    box(root, 0.34, 0.12, 0.04, fabric, [x, y - 0.12, z + 0.2], [-0.12, 0, 0])
+    box(root, 0.56, 0.03, 0.56, plastic, [x, y - 0.38, z])
+    // Shoulder harness straps over the seat back, with a buckle.
+    for (const sx of [-1, 1]) bar([x + sx * 0.11, y + 0.3, z + 0.27], [x + sx * 0.05, y - 0.15, z + 0.18], 0.04, 0.012, belt)
+    box(root, 0.06, 0.04, 0.02, buckle, [x, y - 0.17, z + 0.17])
   }
   const makeYoke = (p: Vec, radius: number): Group => {
     const g = new Group()
@@ -312,6 +337,11 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     solid(wheel, new TorusGeometry(radius, 0.014, 8, 24), plastic, [0, 0, 0])
     solid(wheel, new BoxGeometry(radius * 2, 0.03, 0.03), plastic, [0, 0, 0])
     solid(wheel, new BoxGeometry(0.03, radius, 0.03), plastic, [0, -radius / 2, 0])
+    solid(wheel, new BoxGeometry(0.035, 0.1, 0.045), plastic, [radius, -0.02, 0])
+    solid(wheel, new BoxGeometry(0.035, 0.1, 0.045), plastic, [-radius, -0.02, 0])
+    solid(wheel, new BoxGeometry(0.03, 0.018, 0.02), knobHat, [radius, 0.03, -0.025])
+    solid(wheel, new BoxGeometry(0.03, 0.018, 0.02), knobHat, [-radius, 0.03, -0.025])
+    solid(wheel, new CylinderGeometry(0.028, 0.028, 0.03, 12), trim, [0, 0, 0.0], [Math.PI / 2, 0, 0])
     wheel.name = 'wheel'
     g.add(wheel)
     root.add(g)
@@ -323,6 +353,8 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     g.userData.dynamic = true
     solid(g, new CylinderGeometry(0.014, 0.018, height, 8), trim, [0, height / 2, 0])
     solid(g, new SphereGeometry(0.03, 10, 8), plastic, [0, height + 0.02, 0])
+    solid(g, new CylinderGeometry(0.05, 0.065, 0.05, 12), carpet, [0, 0.01, 0])
+    solid(g, new BoxGeometry(0.012, 0.016, 0.012), knobHat, [0.012, height + 0.05, -0.012])
     root.add(g)
     return g
   }
@@ -454,6 +486,96 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     lever([-0.5, -0.235, -0.3], 0.14)
     lever([-0.46, -0.235, -0.3], 0.14)
     stick = makeStick([0, -0.64, -0.3], 0.3)
+  }
+
+  // ---- furnishing: the small things that make it a room somebody works in ----
+  const knob = (parent: Object3D, p: Vec, r: number, mat: Material, axis: 'y' | 'z' = 'y'): void =>
+    solid(parent, new CylinderGeometry(r, r * 1.1, r * 1.1, 10), mat, p, axis === 'z' ? [Math.PI / 2, 0, 0] : [0, 0, 0])
+  /** A pair of rudder pedals with heel rests, under a pilot's panel. */
+  const pedals = (x: number, y: number, z: number, floor: number): void => {
+    for (const sx of [-1, 1]) {
+      box(root, 0.13, 0.17, 0.025, brushed, [x + sx * 0.14, y, z], [-0.55, 0, 0])
+      box(root, 0.13, 0.02, 0.07, rubber, [x + sx * 0.14, y - 0.07, z - 0.03], [-0.55, 0, 0])
+      bar([x + sx * 0.14, y + 0.07, z + 0.02], [x + sx * 0.14, y + 0.3, z + 0.1], 0.02, 0.02, trim)
+    }
+    box(root, 0.42, 0.015, 0.3, rubber, [x, floor + 0.03, z + 0.3]) // heel mat
+  }
+  if (spec.style === 'airliner') {
+    const px = [0, cx * 2]
+    for (const x of px) {
+      pedals(x, -1.02, -0.78, -1.2)
+      // Master warning and caution lights, and the glare-shield rim.
+      box(root, 0.045, 0.018, 0.035, red, [x - 0.14, -0.073, -0.9], [-0.2, 0, 0])
+      box(root, 0.045, 0.018, 0.035, amber, [x + 0.14, -0.073, -0.9], [-0.2, 0, 0])
+      box(root, 0.5, 0.02, 0.02, trim, [x, -0.083, -0.86])
+      // Sun visors folded up at the top of the windscreen.
+      box(root, 0.42, 0.012, 0.22, glareMat, [x, 0.5, -0.8], [0.35, 0, 0])
+      bar([x - 0.18, 0.5, -0.82], [x - 0.18, 0.55, -0.74], 0.012, 0.012, brushed)
+      // Cup holder and a headset hook.
+      knob(root, [x + (x === 0 ? -0.55 : 0.55), -0.76, 0.0], 0.04, rubber)
+      knob(root, [x + (x === 0 ? -0.8 : 0.8), -0.35, 0.5], 0.015, brushed, 'z')
+    }
+    // Pedestal: flap and speed brake levers, trim wheels, parking brake and the radio panel.
+    for (const sx of [-1, 1]) {
+      knob(root, [cx + sx * 0.185, -0.89, -0.32], 0.075, plastic, 'z')
+      box(root, 0.012, 0.15, 0.012, brushed, [cx + sx * 0.185, -0.89, -0.32])
+    }
+    box(root, 0.02, 0.07, 0.03, trim, [cx + 0.08, -0.82, -0.12])
+    knob(root, [cx + 0.08, -0.77, -0.12], 0.016, knobYellow)
+    box(root, 0.02, 0.07, 0.03, trim, [cx - 0.08, -0.82, 0.06])
+    knob(root, [cx - 0.08, -0.77, 0.06], 0.016, knobBlue)
+    box(root, 0.03, 0.05, 0.1, knobRed, [cx, -0.82, 0.42])
+    box(root, 0.24, 0.025, 0.16, glareMat, [cx, -0.838, 0.28])
+    for (let i = 0; i < 3; i++) box(root, 0.05, 0.01, 0.035, i === 2 ? amber : green, [cx - 0.07 + i * 0.07, -0.822, 0.27])
+    // Overhead: raised module frames, rotary knobs and guard covers.
+    for (let i = 0; i < 4; i++) box(root, 0.02, 0.025, 0.5, trim, [cx - 0.72 + i * 0.48, 0.735, -0.32])
+    for (let r = 0; r < 3; r++) box(root, 1.9, 0.025, 0.02, trim, [cx, 0.735, -0.5 + r * 0.17])
+    for (let i = 0; i < 12; i++) {
+      knob(root, [cx - 0.82 + i * 0.15, 0.72, -0.45 + (i % 3) * 0.11], 0.017, i % 4 === 0 ? knobYellow : brushed)
+      if (i % 3 === 0) box(root, 0.04, 0.012, 0.03, i % 2 ? amber : green, [cx - 0.78 + i * 0.15, 0.727, -0.1])
+    }
+    for (let i = 0; i < 4; i++) box(root, 0.06, 0.03, 0.05, knobRed, [cx - 0.3 + i * 0.2, 0.72, 0.18]) // fire handle guards
+    // Ceiling: dome light, escape-rope box, grab handles, a compass.
+    knob(root, [cx, 0.745, 0.6], 0.06, white)
+    box(root, 0.25, 0.08, 0.2, plastic, [cx, 0.715, 1.2])
+    for (const sx of [-1, 1]) bar([cx + sx * 1.03, 0.4, 0.9], [cx + sx * 1.03, 0.4, 1.6], 0.025, 0.025, brushed)
+    box(root, 0.05, 0.12, 0.05, brushed, [cx, 0.5, -0.74])
+    knob(root, [cx, 0.52, -0.78], 0.035, glareMat)
+    // Window rubber seals just inside the frames.
+    for (const sx of [-1, 1]) {
+      box(root, 0.02, 0.04, 1.0, rubber, [cx + sx * 1.065, -0.075, 0.1])
+      box(root, 0.02, 0.04, 1.0, rubber, [cx + sx * 1.065, 0.53, 0.1])
+    }
+    // Side consoles: the nose-wheel tiller and a small drawer face.
+    for (const sx of [-1, 1]) {
+      knob(root, [cx + sx * 1.0, -0.68, -0.05], 0.03, brushed, 'z')
+      box(root, 0.18, 0.05, 0.18, glareMat, [cx + sx * 0.97, -0.74, 0.5])
+    }
+  } else if (spec.style === 'light') {
+    pedals(0, -0.85, -0.58, -0.95)
+    pedals(cx * 2, -0.85, -0.58, -0.95)
+    // Compass above the windscreen, trim wheel on the pedestal, a glare-shield rim, warning lights.
+    knob(root, [cx, 0.28, -0.55], 0.04, glareMat)
+    box(root, 0.02, 0.1, 0.02, brushed, [cx, 0.31, -0.55])
+    box(root, 1.24, 0.02, 0.02, trim, [cx, -0.17, -0.82])
+    knob(root, [cx + 0.12, -0.52, -0.3], 0.05, plastic, 'z')
+    for (let i = 0; i < 3; i++) box(root, 0.03, 0.02, 0.03, i === 0 ? red : i === 1 ? amber : green, [-0.45 + i * 0.05, -0.2, -0.78])
+    // Headrests and a coat hook on the back wall.
+    for (const x of [0, cx * 2]) box(root, 0.28, 0.16, 0.07, leather, [x, 0.3, 0.38])
+    knob(root, [cx, 0.1, 1.0], 0.012, brushed, 'z')
+  } else {
+    // Fighter: ejection handle, harness straps, warning lights and rudder pedals.
+    box(root, 0.1, 0.03, 0.04, knobYellow, [0, -0.42, -0.2])
+    bar([-0.05, -0.42, -0.2], [-0.05, -0.34, -0.2], 0.012, 0.012, rubber)
+    bar([0.05, -0.42, -0.2], [0.05, -0.34, -0.2], 0.012, 0.012, rubber)
+    for (const sx of [-1, 1]) {
+      bar([sx * 0.14, 0.2, 0.5], [sx * 0.07, -0.3, 0.28], 0.05, 0.014, belt)
+      box(root, 0.07, 0.04, 0.02, buckle, [sx * 0.07, -0.3, 0.27])
+    }
+    box(root, 0.09, 0.02, 0.05, knobRed, [0.52, -0.23, -0.2])
+    for (let i = 0; i < 5; i++) box(root, 0.03, 0.012, 0.03, i % 2 ? amber : green, [-0.2 + i * 0.1, -0.2, -0.78], [-0.28, 0, 0])
+    box(root, 0.4, 0.02, 0.015, glareMat, [0, -0.2, -0.84])
+    pedals(0, -0.62, -0.6, -0.9)
   }
 
   // Merge the static parts: one mesh per material.

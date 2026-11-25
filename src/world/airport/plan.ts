@@ -9,6 +9,7 @@
  */
 
 import type { AirportDef } from '../../config/airports'
+import { buildAirportDetail, GATE_PITCH, type AirportDetail } from './airportDetail'
 import {
   airportFrame,
   airportLayout,
@@ -26,13 +27,14 @@ export const WHITE: Rgb = [0.92, 0.92, 0.9]
 export const YELLOW: Rgb = [0.9, 0.7, 0.1]
 
 /** Vertical layering above the field (m): apron < taxiway < connector < runway < markings < numbers. */
-export const Y_APRON = 0.015
-export const Y_TAXI = 0.022
-export const Y_CONNECTOR = 0.026
-export const Y_RUNWAY = 0.03
-export const Y_MARK = 0.05
-export const Y_TAXI_MARK = 0.04
-export const Y_NUMBER = 0.056
+// A few centimetres apart: with a logarithmic depth buffer polygon offset does nothing, so the layers are separated in height.
+export const Y_APRON = 0.045
+export const Y_TAXI = 0.055
+export const Y_CONNECTOR = 0.06
+export const Y_RUNWAY = 0.065
+export const Y_MARK = 0.085
+export const Y_TAXI_MARK = 0.075
+export const Y_NUMBER = 0.092
 
 export interface PavementPatch {
   kind: 'runway' | 'taxiway' | 'connector' | 'apron'
@@ -115,6 +117,8 @@ export interface AirportPlan {
   papi: PapiPlan[]
   buildings: BuildingPlacement[]
   windsock: { x: number; z: number }
+  /** Architecture, markings, props and parked-aircraft slots. */
+  detail: AirportDetail
 }
 
 /** Local frame -> world x/z for an airport. */
@@ -340,7 +344,7 @@ function buildBuildings(a: AirportDef, out: BuildingPlacement[]): void {
   const standAlong = -0.22 * lay.apron.length
   const gates = (from: number, to: number) => {
     for (let k = from; k <= to; k++) {
-      const along = standAlong + k * 60
+      const along = standAlong + k * GATE_PITCH
       if (k === 0) continue
       put({ kind: 'gate', along, off: 20.5, width: 11, depth: 17, height: 9.6, color: GLASS })
       put({ kind: 'bridge', along, off: 8, width: 12, depth: 2.9, height: 2.7, base: 4.1, color: TERMINAL })
@@ -349,10 +353,10 @@ function buildBuildings(a: AirportDef, out: BuildingPlacement[]): void {
   switch (a.class) {
     case 'international': {
       // A long terminal with a glass face, two piers at its ends, and eleven gates.
-      put({ kind: 'terminal', along: standAlong + 180, off: 26 + 30, width: 60, depth: 700, height: 16, color: TERMINAL })
-      put({ kind: 'terminal', along: standAlong + 180, off: 26 + 30 + 52, width: 40, depth: 560, height: 11, color: CONCRETE })
+      put({ kind: 'terminal', along: standAlong + 3 * GATE_PITCH, off: 26 + 30, width: 60, depth: 11 * GATE_PITCH, height: 15, color: TERMINAL })
+      put({ kind: 'terminal', along: standAlong + 3 * GATE_PITCH, off: 26 + 30 + 52, width: 40, depth: 9 * GATE_PITCH, height: 11, color: CONCRETE })
       for (const s of [-1, 1]) {
-        put({ kind: 'terminal', along: standAlong + 180 + s * 400, off: 26 + 16, width: 32, depth: 60, height: 12, color: TERMINAL })
+        put({ kind: 'terminal', along: standAlong + 3 * GATE_PITCH + s * 5.8 * GATE_PITCH, off: 26 + 16, width: 32, depth: 60, height: 12, color: TERMINAL })
       }
       gates(-2, 8)
       towerAt(Math.min(apronHalf + 50, 700), 60, 44, 9)
@@ -362,7 +366,7 @@ function buildBuildings(a: AirportDef, out: BuildingPlacement[]): void {
       break
     }
     case 'regional': {
-      put({ kind: 'terminal', along: standAlong + 60, off: 26 + 18, width: 36, depth: 300, height: 10, color: TERMINAL })
+      put({ kind: 'terminal', along: standAlong + 1 * GATE_PITCH, off: 26 + 18, width: 36, depth: 5 * GATE_PITCH, height: 10, color: TERMINAL })
       gates(-1, 3)
       towerAt(standAlong + 260, 45, 20, 6)
       put({ kind: 'hangar', along: standAlong - 260, off: 20 + 20, width: 40, depth: 60, height: 10, shape: 'gable', ridge: 3, color: HANGAR })
@@ -439,5 +443,7 @@ export function buildAirportPlan(a: AirportDef): AirportPlan {
   const buildings: BuildingPlacement[] = []
   buildBuildings(a, buildings)
   const windsock = { x: -(rr.width / 2 + 70), z: rr.length / 2 - 250 }
-  return { airport: a, pavement, markings, designators, lights, papi, buildings, windsock }
+  const detail = buildAirportDetail(a, buildings)
+  lights.push(...detail.lights)
+  return { airport: a, pavement, markings, designators, lights, papi, buildings, windsock, detail }
 }

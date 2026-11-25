@@ -3,6 +3,9 @@ import { useMultiplayerStore } from '../state/multiplayerStore'
 import { RemoteAircraft } from './remote/RemoteAircraft'
 import { AircraftModel } from './aircraft/AircraftModel'
 import { Airports } from './airport/Airports'
+import { AirportProps } from './airport/AirportProps'
+import { Windsocks } from './airport/Windsocks'
+import { GroundTraffic } from './traffic/GroundTraffic'
 import { JetBridge } from './airport/JetBridge'
 import { TaxiRoute } from './airport/TaxiRoute'
 import { CameraRig } from './camera/CameraRig'
@@ -13,6 +16,7 @@ import { Lighting } from './environment/Lighting'
 import { Sky } from './environment/Sky'
 import { Water } from './environment/Water'
 import { Rings } from './rings/Rings'
+import { Scenery } from './scenery/Scenery'
 import { TerrainSystem } from './terrain/TerrainSystem'
 import { TrafficFleet } from './traffic/TrafficFleet'
 import type { FlightWorldProps } from './types'
@@ -54,8 +58,12 @@ function WorldContent({
       <Lighting renderState={renderState} profile={profile} timeOfDay={timeOfDay} weather={weather} />
 
       <TerrainSystem terrain={terrain} profile={profile} />
+      <Scenery terrain={terrain} />
       <Water profile={profile} timeOfDay={timeOfDay} weather={weather} />
       <Airports shadows={profile.shadows} />
+      <AirportProps />
+      <Windsocks />
+      <GroundTraffic />
       <TaxiRoute />
       <JetBridge />
       <Clouds profile={profile} timeOfDay={timeOfDay} weather={weather} />

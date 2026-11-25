@@ -59,6 +59,12 @@ export function FlightCanvas() {
   const airportId = useGameStore((s) => s.airportId)
   const runwayEnd = useGameStore((s) => s.runwayEnd)
 
+  // Declared before the reset effect so a fresh flight starts with the right wind.
+  const wind = useGameStore((s) => s.settings.wind)
+  useEffect(() => {
+    session.setWindSetting(wind)
+  }, [session, wind])
+
   // Start and every restart: back to the spawn, no stale state.
   useEffect(() => {
     // Online uses the multiplayer start; after a lost connection (flying solo) back to the usual line-up.

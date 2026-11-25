@@ -94,7 +94,8 @@ function build(): Built {
   const geos: BufferGeometry[] = []
   const mats: Material[] = []
   const texs: Texture[] = []
-  const groundMat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, side: DoubleSide })
+  // Pavement lies a few centimetres above the flat terrain: pull it towards the camera so the two never fight.
+  const groundMat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, side: DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 })
   const buildingMat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.05, side: DoubleSide })
   const lightMat = new MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false })
   patchLightMaterial(lightMat)
@@ -160,10 +161,8 @@ function build(): Built {
 
     const bl = new MeshBuilder()
     for (const b of plan.buildings) bl.gable(b.x, b.z, b.width, b.depth, b.base, b.height, b.shape === 'gable' ? b.ridge : 0, b.color)
-    // windsock: pole, ring and banded sock pointing down the runway-perpendicular (fixed "wind")
-    const w = plan.windsock
-    bl.pole(w.x, w.z, 7, 0.12, [0.8, 0.8, 0.8])
-    bl.sock(w.x, 7, w.z, 3.6, 0.7, 0.35, [[1, 0.4, 0.05], [0.95, 0.95, 0.95], [1, 0.4, 0.05], [0.95, 0.95, 0.95]])
+    for (const d of plan.detail.boxes) bl.box(d.cx, d.cz, d.w, d.d, d.y0, d.h, d.color)
+    for (const c of plan.detail.cylinders) bl.cyl(c.cx, c.cz, c.r, c.y0, c.h, c.color)
     const blGeo = bl.build()
     geos.push(blGeo)
     const blMesh = new Mesh(blGeo, buildingMat)

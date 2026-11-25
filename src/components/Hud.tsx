@@ -137,6 +137,14 @@ export function Hud() {
             <span data-testid="hud-vs">{formatVerticalSpeed(t.verticalSpeed, units)}</span>
           </div>
           <div className="hud-row">
+            <span>WIND</span>
+            <span data-testid="hud-wind">
+              {t.wind.speed < 0.5
+                ? 'CALM'
+                : `${String(Math.round(norm360(t.wind.fromDeg) / 10) * 10 % 360 || 360).padStart(3, '0')}/${Math.round(t.wind.speed * 1.944)}kt`}
+            </span>
+          </div>
+          <div className="hud-row">
             <span>PITCH</span>
             <span>{Math.round(t.pitchDeg)}&deg;</span>
           </div>

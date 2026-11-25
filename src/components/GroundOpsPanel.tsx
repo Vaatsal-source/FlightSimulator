@@ -8,6 +8,7 @@ import './GroundOps.css'
 
 const PHASE_LABEL = {
   coldDark: 'Cold and dark',
+  pushback: 'Pushback',
   starting: 'Engine start',
   taxi: 'Taxi',
   holdShort: 'Hold short',

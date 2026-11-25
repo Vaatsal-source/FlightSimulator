@@ -179,9 +179,9 @@ export function distanceToRoute(points: readonly Pt[], p: Pt, fromIndex = 0): nu
 
 // -------------------------------------------------------------------- phases
 
-export type GroundPhase = 'coldDark' | 'starting' | 'taxi' | 'holdShort' | 'lineUp' | 'takeoff' | 'airborne'
+export type GroundPhase = 'coldDark' | 'pushback' | 'starting' | 'taxi' | 'holdShort' | 'lineUp' | 'takeoff' | 'airborne'
 
-const PHASE_ORDER: readonly GroundPhase[] = ['coldDark', 'starting', 'taxi', 'holdShort', 'lineUp', 'takeoff', 'airborne']
+const PHASE_ORDER: readonly GroundPhase[] = ['coldDark', 'pushback', 'starting', 'taxi', 'holdShort', 'lineUp', 'takeoff', 'airborne']
 const phaseAtLeast = (p: GroundPhase, q: GroundPhase): boolean => PHASE_ORDER.indexOf(p) >= PHASE_ORDER.indexOf(q)
 
 export interface GroundInputs {
@@ -204,6 +204,12 @@ export interface GroundInputs {
   servicesReady?: boolean
   servicesBlocker?: string | null
   loaded?: boolean
+  /** The tug is pushing the aircraft back. */
+  pushing?: boolean
+  /** The nearest other aircraft ahead on the taxiway, if any. */
+  traffic?: { distance: number; hit: boolean } | null
+  /** Another aircraft is lined up or rolling on the runway. */
+  runwayBusy?: boolean
 }
 
 export interface ChecklistItem {
@@ -256,7 +262,7 @@ export class GroundOps {
     this.atc = this.say(
       'Tower',
       hasServices
-        ? 'cold and dark at the gate. Extend the bridge, refuel and board, close up, then press N to start the engines.'
+        ? 'cold and dark at the gate. Extend the bridge, refuel and board, close up, then press T for pushback and N to start the engines.'
         : 'cold and dark. Press N to start the engines, K releases the parking brake.',
     )
     this.view_ = this.build(null)
@@ -286,6 +292,15 @@ export class GroundOps {
     const route = this.route
     const here: Pt = { x: i.x, z: i.z }
     const rect = route.end.runway.rect
+
+    // Pushback: from the stand, tail-first, before the engines start.
+    if (i.pushing && this._phase === 'coldDark') {
+      this._phase = 'pushback'
+      this.atc = this.say('Ground', 'pushback approved. The tug has the brakes: hands off the controls.')
+    } else if (!i.pushing && this._phase === 'pushback') {
+      this._phase = 'coldDark'
+      this.atc = this.say('Ground', 'pushback complete. Set the parking brake and start engines (N).')
+    }
 
     // Engines: cold and dark until the start begins, then the taxi once they run.
     if (this._phase === 'coldDark' && (i.engineStart > 0 || i.engineRunning)) {
@@ -331,7 +346,10 @@ export class GroundOps {
         this.nextIndex++
       }
       if (this._phase === 'taxi') {
-        if (i.groundSpeed > TAXI_SPEED_LIMIT) this.warning = 'Slow down: taxi speed is 15 knots at most.'
+        if (i.traffic?.hit) this.warning = 'Too close to the aircraft ahead: stop and hold position.'
+        else if (i.traffic && i.traffic.distance < 90 && i.groundSpeed > 3) {
+          this.warning = 'Traffic ahead: slow down and keep your distance.'
+        } else if (i.groundSpeed > TAXI_SPEED_LIMIT) this.warning = 'Slow down: taxi speed is 15 knots at most.'
         else if (distanceToRoute(route.points, here, this.nextIndex) > OFF_ROUTE && !inRect(rect, i.x, i.z, 20)) {
           this.warning = 'Off the taxiway: return to the green lights.'
         }
@@ -348,7 +366,11 @@ export class GroundOps {
       if (this._phase === 'holdShort') {
         if (i.groundSpeed < 1.5) {
           if (this.stoppedAt === null) this.stoppedAt = i.time
-          if (!this.cleared && i.time - this.stoppedAt >= CLEARANCE_DELAY) {
+          if (!this.cleared && i.runwayBusy) {
+            this.warning = null
+            this.atc = this.say('Tower', `runway ${this.runwayName()}, hold short: traffic on the runway.`)
+            this.stoppedAt = i.time
+          } else if (!this.cleared && i.time - this.stoppedAt >= CLEARANCE_DELAY) {
             this.cleared = true
             this.atc = this.say('Tower', `runway ${this.runwayName()}, wind calm, cleared for take-off. Line up and go.`)
           }

@@ -213,6 +213,11 @@ export class AircraftPhysics implements FlightModel {
 
   // Scratch (no per-step allocation).
   private readonly vBody: Vec3 = { x: 0, y: 0, z: 0 }
+  /** Velocity relative to the air mass, body frame: what the wings feel. */
+  private readonly vAir: Vec3 = { x: 0, y: 0, z: 0 }
+  private readonly windRel: Vec3 = { x: 0, y: 0, z: 0 }
+  private windX = 0
+  private windZ = 0
   private readonly tmpA: Vec3 = { x: 0, y: 0, z: 0 }
   private readonly tmpB: Vec3 = { x: 0, y: 0, z: 0 }
   private readonly tmpC: Vec3 = { x: 0, y: 0, z: 0 }
@@ -353,6 +358,24 @@ export class AircraftPhysics implements FlightModel {
   private starterOn = false
   private startProgress = 0
 
+  get wind(): { x: number; z: number } {
+    return { x: this.windX, z: this.windZ }
+  }
+
+  setWind(windX: number, windZ: number): void {
+    this.windX = Number.isFinite(windX) ? Math.max(-60, Math.min(60, windX)) : 0
+    this.windZ = Number.isFinite(windZ) ? Math.max(-60, Math.min(60, windZ)) : 0
+  }
+
+  /** A tug pushing the aircraft back: speed (m/s, 0 = none) and the tail swing (deg/s, + = nose to the right). */
+  private tugSpeed = 0
+  private tugYawRate = 0
+
+  setTug(speed: number, yawRateDegS = 0): void {
+    this.tugSpeed = Number.isFinite(speed) ? Math.max(0, Math.min(3, speed)) : 0
+    this.tugYawRate = Number.isFinite(yawRateDegS) ? Math.max(-6, Math.min(6, yawRateDegS)) : 0
+  }
+
   get massKg(): number {
     return this.config.mass
   }
@@ -400,6 +423,8 @@ export class AircraftPhysics implements FlightModel {
   }
 
   reset(spawn: SpawnState): void {
+    this.tugSpeed = 0
+    this.tugYawRate = 0
     this.starterOn = false
     this.startProgress = 0
     const s = this.state
@@ -519,6 +544,12 @@ export class AircraftPhysics implements FlightModel {
     this.flagHardLanding = false
     this.flagSlope = false
 
+    // An airborne start has its airspeed through the air: the ground velocity includes the wind.
+    if (!spawn.onGround) {
+      s.velocity.x += this.windX
+      s.velocity.z += this.windZ
+    }
+
     // Evaluate forces once (no touchdown detection) to fill thrust and gForce.
     this.computeForces(false)
     this.updateDerived()
@@ -615,6 +646,17 @@ export class AircraftPhysics implements FlightModel {
       v.y *= k
       v.z *= k
     }
+    const tugging = this.tugSpeed > 0 && weightOnWheels
+    if (tugging) {
+      // Pushback: the tug drags the aircraft tail-first along its heading.
+      this.tmpA.x = 0
+      this.tmpA.y = 0
+      this.tmpA.z = 1
+      rotateVec(s.orientation, this.tmpA, this.tmpB)
+      const k = Math.hypot(this.tmpB.x, this.tmpB.z) || 1
+      v.x = (this.tmpB.x / k) * this.tugSpeed
+      v.z = (this.tmpB.z / k) * this.tugSpeed
+    }
     s.position.x += v.x * dt
     s.position.y += v.y * dt
     s.position.z += v.z * dt
@@ -637,6 +679,11 @@ export class AircraftPhysics implements FlightModel {
       w.x *= k
       w.y *= k
       w.z *= k
+    }
+    if (tugging) {
+      w.x = 0
+      w.z = 0
+      w.y = -this.tugYawRate * DEG2RAD
     }
     integrateQuat(s.orientation, w.x, w.y, w.z, dt)
 
@@ -1032,7 +1079,11 @@ export class AircraftPhysics implements FlightModel {
   private updateAirData(): void {
     const s = this.state
     const cfg = this.config
-    const vb = rotateVecInverse(s.orientation, s.velocity, this.vBody)
+    rotateVecInverse(s.orientation, s.velocity, this.vBody)
+    this.windRel.x = s.velocity.x - this.windX
+    this.windRel.y = s.velocity.y
+    this.windRel.z = s.velocity.z - this.windZ
+    const vb = rotateVecInverse(s.orientation, this.windRel, this.vAir)
     const V = Math.sqrt(vb.x * vb.x + vb.y * vb.y + vb.z * vb.z)
     const h = s.position.y
     this.adSpeed = V
@@ -1068,7 +1119,7 @@ export class AircraftPhysics implements FlightModel {
     T.z = 0
 
     this.updateAirData()
-    const vb = this.vBody
+    const vb = this.vAir
     const V = this.adSpeed
     // Body-frame force accumulator (aero + thrust).
     let fbx = 0
@@ -1355,14 +1406,19 @@ export class AircraftPhysics implements FlightModel {
     const cfg = this.config
     const q = s.orientation
     const v = s.velocity
-    const V = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+    // Speeds through the air mass: with no wind, the same as over the ground.
+    this.windRel.x = v.x - this.windX
+    this.windRel.y = v.y
+    this.windRel.z = v.z - this.windZ
+    const V = Math.sqrt(this.windRel.x * this.windRel.x + this.windRel.y * this.windRel.y + this.windRel.z * this.windRel.z)
     s.airspeed = V
     s.mach = V / speedOfSound(s.position.y)
     s.groundSpeed = Math.sqrt(v.x * v.x + v.z * v.z)
     s.altitude = s.position.y
     s.verticalSpeed = v.y
 
-    const vb = rotateVecInverse(q, v, this.vBody)
+    rotateVecInverse(q, v, this.vBody)
+    const vb = rotateVecInverse(q, this.windRel, this.vAir)
     if (V > 0.5) {
       s.angleOfAttack = Math.atan2(-vb.y, -vb.z)
       s.sideslip = Math.asin(clamp(vb.x / V, -1, 1))

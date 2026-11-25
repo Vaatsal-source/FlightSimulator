@@ -73,6 +73,8 @@ export interface TelemetrySnapshot {
   ground: GroundView | null
   /** Weight and balance for the airliners (null for the trainer and the F-22). */
   loading: LoadingView | null
+  /** The wind now: where it blows from (deg) and its speed (m/s). */
+  wind: { fromDeg: number; speed: number }
 }
 
 export interface LoadingView {
@@ -140,6 +142,7 @@ export const INITIAL_TELEMETRY: Readonly<TelemetrySnapshot> = deepFreeze({
   parkingBrake: false,
   ground: null,
   loading: null,
+  wind: { fromDeg: 0, speed: 0 },
 })
 
 function deepFreeze<T extends object>(obj: T): T {

@@ -155,7 +155,7 @@ describe('buildCockpit', () => {
       cockpit.root.traverse((o) => {
         if ((o as { isMesh?: boolean }).isMesh) meshes++
       })
-      expect(meshes, id).toBeLessThan(40)
+      expect(meshes, id).toBeLessThan(50)
       cockpit.dispose()
     }
   })

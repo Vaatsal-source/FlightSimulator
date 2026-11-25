@@ -201,6 +201,11 @@ export interface FlightModel {
   reset(spawn: SpawnState): void
   /** Crash now with `reason` (multiplayer collisions). No-op once crashed. */
   forceCrash(reason: string): void
+  /** The air mass's velocity over the ground (m/s): +X east, +Z south. Air data, lift and drag use the aircraft's velocity relative to it. */
+  setWind(windX: number, windZ: number): void
+  /** Pushback tug: tail-first speed (m/s, 0 = no tug) and tail swing (deg/s). */
+  setTug(speed: number, yawRateDegS?: number): void
+  readonly wind: { x: number; z: number }
   /** Gross mass (kg) and how far aft of the design CG the centre of gravity sits (m, negative = forward). */
   setLoad(load: { massKg: number; cgShiftM: number }): void
   /** Current gross mass (kg). */

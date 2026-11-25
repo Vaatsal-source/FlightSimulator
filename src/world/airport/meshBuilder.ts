@@ -69,6 +69,23 @@ export class MeshBuilder {
     }
   }
 
+  /** Upright cylinder (an n-sided prism): radius r, from y0 to y0+h. */
+  cyl(cx: number, cz: number, r: number, y0: number, h: number, color: Rgb, n = 14): void {
+    const y1 = y0 + h
+    const top: V3[] = []
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2
+      const a1 = ((i + 1) / n) * Math.PI * 2
+      const x0 = cx + Math.cos(a0) * r, z0 = cz + Math.sin(a0) * r
+      const x1 = cx + Math.cos(a1) * r, z1 = cz + Math.sin(a1) * r
+      const am = (a0 + a1) / 2
+      const shade = 0.82 + 0.18 * Math.cos(am - 0.8)
+      this.face([[x1, y0, z1], [x0, y0, z0], [x0, y1, z0], [x1, y1, z1]], [color[0] * shade, color[1] * shade, color[2] * shade], [Math.cos(am), 0, Math.sin(am)])
+      top.push([x0, y1, z0])
+    }
+    this.face(top.slice().reverse(), [color[0] * 0.7, color[1] * 0.7, color[2] * 0.7], [0, 1, 0])
+  }
+
   /** Thin vertical pole. */
   pole(cx: number, cz: number, h: number, r: number, color: Rgb): void {
     this.box(cx, cz, r * 2, r * 2, 0, h, color)

@@ -18,6 +18,10 @@ export function SimulationDriver({ session, audio }: { session: FlightSession; a
   const engineKind = info.engineKind
   const [callouts] = useState(() => new CalloutDetector())
   useEffect(() => stopSpeech, [])
+  useEffect(() => {
+    // Dev only: lets the inspection scripts move the aircraft.
+    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__flysimSession = session
+  }, [session])
   useFrame((_, delta) => {
     const { paused, screen, overlay, settings } = useGameStore.getState()
     const frozen = paused || overlay !== 'none' || screen !== 'flight'
