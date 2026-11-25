@@ -218,7 +218,7 @@
   .ready-plane { animation: none; }
   .menu-flyby { left: 12%; }
   .menu-btn:hover,
-  .menu-btn:focus-visible,
+  .menu-btn:focus-visible { transform: none; }
 }
 
 /* ---- Menu polish: richer horizon, headline actions, aircraft facts ---- */

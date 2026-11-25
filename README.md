@@ -2,9 +2,9 @@
 
 # ✈️ FlySim
 
-**An open-source island flight simulator that runs in your browser.**
+**A flight simulator that runs in your browser.**
 
-Take off, fly a circuit and grease the landing, from a light trainer to an A350.
+Start cold and dark at the gate, push back, taxi, take off, fly and land, from a light trainer to an A350.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -12,39 +12,37 @@ Take off, fly a circuit and grease the landing, from a light trainer to an A350.
 [![Three.js](https://img.shields.io/badge/Three.js-r186-black?logo=three.js)](https://threejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 
-<img src="docs/main-menu.jpg" alt="FlySim main menu: aircraft picker, time of day and pilot log over an island backdrop" width="720">
+<img src="docs/main-menu.png" alt="FlySim main menu: game modes, aircraft picker and time of day over a runway at an airport" width="720">
 
 </div>
 
 ## Features
 
-- **Flight physics:** lift, drag, thrust and ground handling for each aircraft, including landing on open ground
+- **Flight physics:** lift, drag, thrust, ground handling and wind (gusts, crosswind) for each aircraft, including landing on open ground
 - **Six aircraft:** FS-1 Trainer, Airbus A220, Airbus A320, Airbus A350, Bombardier Global 8000 and F-22, each tuned against published figures
-- **Airports and maps:** airports with more than one runway, a minimap and a full world map
-- **Autopilot:** speed, heading, altitude and vertical-speed holds
-- **Landing assist** (press `0` near a runway): flies the approach and the 3° glide path down to 100 ft, then hands over for the flare, and goes around if the approach is unstable
+- **Gate departure:** start cold and dark at the stand, refuel and board through a working jet bridge, stay within weight and balance limits, push back (`T`), start the engines, taxi with ATC and a checklist, and take off
+- **Gate arrival:** land, vacate the runway, taxi in, park on the stand and deplane
+- **Busy airports:** glass terminals with finger piers, gates, parked airliners, ground vehicles, towers, hangars and fuel farms; several have parallel runways; airliners taxi and take off around you
+- **The world:** islands, forests, fields, villages, roads, wind farms and radio masts, with morning, noon, evening and night and clear, overcast or fog
+- **Wind:** calm to strong, with gusts, animated windsocks and a HUD readout
+- **Autopilot and landing assist** (press `0` near a runway): speed, heading, altitude and vertical-speed holds, and an approach down the 3° glide path to 100 ft, with a go-around if it is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
-- **Gate departure and arrival:** start cold and dark at the stand, refuel and board through a working jet bridge, load within weight and balance limits, start up, taxi, take off; or land, taxi in, park and deplane
-- **Wind, pushback and traffic:** adjustable wind with gusts, windsocks, a tug pushback (`T`), and airliners taxiing and taking off around you
-- **Night and weather:** morning, noon, evening and night, with clear, overcast or fog
-- **Flight School:** guided take-off, landing and full-circuit lessons
-- **Challenges:** take-off, landing and ring courses, with best scores kept in your pilot log
-- **3D cockpits:** a flight deck for each aircraft (round gauges, airliner glass screens, fighter HUD), with head motion and mouse look
+- **3D cockpits:** a detailed flight deck for each aircraft (round gauges, airliner glass screens, fighter HUD), with head motion and mouse look
 - **AI traffic:** airliners fly between the airports, take off and land (scenery, no collision)
-- **Time of day:** morning, noon or evening light
+- **Maps:** a minimap and a full world map
 
 ## Quick start
 
 You need [Node.js](https://nodejs.org) 22 or newer.
 
 ```bash
-git clone https://github.com/SingeyDorje21/flysim.git
-cd flysim
+git clone https://github.com/Vaatsal-source/FlightSimulator.git
+cd FlightSimulator
 npm install
 npm run dev
 ```
 
-Then open the local URL Vite prints (usually http://localhost:5173).
+Then open the local URL Vite prints (usually http://localhost:5173). Pick **Gate Departure** for the full experience, or **Quick Flight** to start on the runway.
 
 ## Controls
 
@@ -76,11 +74,11 @@ The full list is also on the **Controls** screen in the game.
 
 ## Multiplayer
 
-Multiplayer is no longer linked from the main menu (the screen and the server are still in the code). It adds a small server ([server/](server/)) that the browser connects to over WebSockets. Everyone online flies in the same sky.
+**Multiplayer is currently switched off in the game's menu** (the screen and the server are still in the code, so the server below is optional and nothing in the shipped menu reaches it). It adds a small server ([server/](server/)) that the browser connects to over WebSockets. Everyone online flies in the same sky.
 
 **How it plays**
 
-- **Join:** choose **Multiplayer** on the main menu. Enter a pilot name, pick an aircraft, then pick an airport and runway on the map. **Join the sky** puts you in the middle of that runway. Aircraft that need more than half of it for take-off (the airliners and business jet, and the F-22 on short runways) start further back, with their minimum runway still ahead. There are no rooms or codes: everyone online shares one world, up to 24 pilots.
+- **Join:** (needs the menu entry restored) Enter a pilot name, pick an aircraft, then pick an airport and runway on the map. **Join the sky** puts you in the middle of that runway. Aircraft that need more than half of it for take-off (the airliners and business jet, and the F-22 on short runways) start further back, with their minimum runway still ahead. There are no rooms or codes: everyone online shares one world, up to 24 pilots.
 - **Score:** your score is flying time × a multiplier. The multiplier starts at ×1.0, and the server grades every take-off and landing:
   - **Take-offs:** a clean take-off (wings level, no over-rotation) adds up to +0.25 once you've been airborne 10 s.
   - **Landings:** after a flight of at least 30 s, a soft landing adds up to +0.5. Under 1 m/s sink is a "Butter landing"; a hard one costs 0.25.
@@ -105,18 +103,13 @@ On `localhost` the game finds the server at `ws://localhost:8787` by itself. To 
 
 **Deploy**
 
-The site stays a static build on Vercel. Vercel can't host the always-on WebSocket server, so that runs on [Render](https://render.com), whose free plan works without a card. [`render.yaml`](render.yaml) sets it all up.
-
-1. In Render: **New → Blueprint**, then pick this repository and branch. Render creates the `flysim-rooms` service and runs `npm run server`. Health checks hit `/healthz`.
-2. That's it. The game connects to `wss://flysim-rooms.onrender.com` by default. If Render gives the service a different URL, set `VITE_MP_SERVER_URL` to it in Vercel and redeploy.
-
-On the free plan the server sleeps after about 15 minutes idle. The first join after that takes up to a minute to connect, and the lobby says so while it waits.
+See [Deploying](#deploying) below.
 
 | Setting                    | Where       | Meaning                                                                        |
 | -------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| `VITE_MP_SERVER_URL`       | site build  | Multiplayer server URL. Default: `wss://flysim-rooms.onrender.com`, or `ws://localhost:8787` when the game runs on localhost |
+| `VITE_MP_SERVER_URL`       | site build  | Multiplayer server URL (`wss://...`). Default: `ws://localhost:8787` when the game runs on localhost, otherwise none (multiplayer off) |
 | `PORT`                     | server      | Listen port (default `8787`)                                                   |
-| `ALLOWED_ORIGINS`          | server      | Comma-separated site origins allowed to connect. `*` matches part of a host name, e.g. `https://flysim-*-singeys-projects.vercel.app` for every preview |
+| `ALLOWED_ORIGINS`          | server      | Comma-separated site origins allowed to connect. `*` matches part of a host name, e.g. `https://flysim-*-yourname.vercel.app` for every preview |
 | `TRUST_PROXY`              | server      | `1` behind a proxy, so per-IP rate limits use `X-Forwarded-For`               |
 
 **Decisions you might revisit:** these are in [docs/adr/0002-single-shared-sky.md](docs/adr/0002-single-shared-sky.md), which updates [ADR 0001](docs/adr/0001-multiplayer-room-server.md).
@@ -125,6 +118,45 @@ On the free plan the server sleeps after about 15 minutes idle. The first join a
 - One sky holds 24 pilots.
 - Mid-runway spawns are multiplayer only. Single-player modes still line up at the runway end.
 - Heavier aircraft start back from the middle so their minimum runway is ahead. Where the whole runway is shorter than that, they line up at the end as in single player, and the lobby warns as it does there.
+
+## Deploying
+
+The game is a static site (Vercel). The multiplayer server is an optional always-on Node service (Render). Because the shipped menu has no Multiplayer entry, **the game works fully with only the Vercel part**; do the Render part if you want the server running for when multiplayer is switched back on.
+
+### 1. Put the code on GitHub
+
+The repository is already at `https://github.com/Vaatsal-source/FlightSimulator`. Push your latest commits to `main`; both Vercel and Render deploy from it.
+
+```bash
+git push origin main
+```
+
+### 2. Frontend on Vercel
+
+1. Sign in at [vercel.com](https://vercel.com) with GitHub.
+2. **Add New → Project**, import `FlightSimulator`.
+3. Leave the detected settings: Framework **Vite**, Build Command `npm run build`, Output Directory `dist`, Install Command `npm install`. No `vercel.json` is needed.
+4. Under **Environment Variables**, add `VITE_MP_SERVER_URL` only when you have the Render URL (step 3 below). It is not needed for single-player.
+5. **Deploy.** You get `https://<project>.vercel.app`. Every push to `main` redeploys; other branches get preview URLs.
+
+Check it: open the URL, choose **Gate Departure**, and look for the cockpit and airport after the loading screen. The first load downloads the airliner models (about 1 MB) and builds the terrain, so give it a few seconds.
+
+### 3. Server on Render (optional)
+
+1. Sign in at [render.com](https://render.com) with GitHub.
+2. **New → Blueprint**, pick `FlightSimulator` and the `main` branch. Render reads [`render.yaml`](render.yaml) and creates the `flysim-rooms` web service (Node 22, `npm ci` then `npm run server`, health check `/healthz`, free plan).
+3. When Render asks for `ALLOWED_ORIGINS`, enter your site's address, for example `https://<project>.vercel.app`. Use a comma between several, and `*` as a wildcard to also allow previews (`https://<project>-*-<team>.vercel.app`). Leaving it empty lets any website connect.
+4. Wait for the first deploy to go **Live**, then open `https://<service>.onrender.com/healthz`. It should answer `200`.
+5. Copy the service URL, change `https://` to `wss://` (for example `wss://flysim-rooms-xxxx.onrender.com`; the name may get a random suffix if `flysim-rooms` is taken), and in Vercel go to **Project → Settings → Environment Variables**, add `VITE_MP_SERVER_URL` with that value for Production (and Preview), then **Deployments → Redeploy**. Vite bakes the value in at build time, so a redeploy is required.
+
+The free Render plan sleeps after about 15 minutes idle; the first connection afterwards takes up to a minute. Pilot scores live only as long as the server process.
+
+### Troubleshooting
+
+- **Blank page or build fails on Vercel:** run `npm run build` locally; Vercel runs the same command. Node 22 or newer is required (set it under Project → Settings → General → Node.js Version).
+- **The 3D view does not start:** the browser needs WebGL; turn on hardware acceleration.
+- **Render service fails to start:** check the logs for the `Listening` line; `PORT` is supplied by Render, do not set it.
+- **Multiplayer cannot connect:** confirm `/healthz` works, that `VITE_MP_SERVER_URL` starts with `wss://`, and that `ALLOWED_ORIGINS` contains your exact Vercel origin (no trailing slash).
 
 ## Scripts
 
@@ -165,7 +197,7 @@ Contributions are welcome: new aircraft, airports, lessons, bug fixes or better 
 3. Run the checks: `npm run typecheck`, `npm run lint` and `npm test`
 4. Open a pull request describing what you changed and why
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an idea? [Open an issue](https://github.com/SingeyDorje21/flysim/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an idea? [Open an issue](https://github.com/Vaatsal-source/FlightSimulator/issues).
 
 ## Tech stack
 

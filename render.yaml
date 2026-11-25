@@ -1,8 +1,7 @@
 # Render Blueprint for the FlySim multiplayer server (server/): one shared sky for everyone.
 # Render dashboard -> New -> Blueprint -> pick this repository. The game itself
-# stays on Vercel; it connects to wss://flysim-rooms.onrender.com by default
-# (src/state/multiplayerStore.ts). If Render gives the service another URL,
-# set VITE_MP_SERVER_URL to it in Vercel and redeploy.
+# stays on Vercel. After the first deploy, set VITE_MP_SERVER_URL in Vercel to this
+# service's address with wss:// (see README, "Deploying") and redeploy the site.
 services:
   - type: web
     name: flysim-rooms
@@ -20,6 +19,6 @@ services:
       # Render's proxy appends the client address to X-Forwarded-For.
       - key: TRUST_PROXY
         value: "1"
-      # Only the FlySim site and its Vercel previews may connect.
+      # Your site's origin(s), e.g. https://your-project.vercel.app (Render asks for it on first deploy).
       - key: ALLOWED_ORIGINS
-        value: https://flysim-seven.vercel.app,https://flysim-singeys-projects.vercel.app,https://flysim-*-singeys-projects.vercel.app
+        sync: false

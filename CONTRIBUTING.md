@@ -4,7 +4,7 @@ Thanks for wanting to help! Every contribution, big or small, is welcome.
 
 ## Ways to help
 
-- **Report a bug:** [open an issue](https://github.com/SingeyDorje21/flysim/issues) with what you did, what you expected and what happened. Your browser and a screenshot help a lot.
+- **Report a bug:** [open an issue](https://github.com/Vaatsal-source/FlightSimulator/issues) with what you did, what you expected and what happened. Your browser and a screenshot help a lot.
 - **Suggest an idea:** new aircraft, airports, lessons or challenges. For a big change, open an issue to talk it through first.
 - **Send a pull request:** fixes, features, tests or docs.
 
