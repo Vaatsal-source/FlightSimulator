@@ -51,11 +51,13 @@ export function TaxiRoute() {
 
   useFrame(() => {
     if (!res) return
-    const phase = getTelemetry().ground?.phase
-    const show = phase !== undefined && phase !== 'takeoff' && phase !== 'airborne'
+    const g = getTelemetry().ground
+    const phase = g?.phase
+    const arrival = route?.kind === 'arrival'
+    const show = phase !== undefined && (arrival ? phase === 'vacating' || phase === 'taxiIn' || phase === 'parking' : phase !== 'takeoff' && phase !== 'airborne')
     res.line.visible = show
-    // The stop bar goes dark once the tower has cleared the take-off.
-    res.bar.visible = show && getTelemetry().ground?.cleared !== true
+    // The stop bar belongs to departures, and goes dark once the tower has cleared the take-off.
+    res.bar.visible = show && !arrival && g?.cleared !== true
   })
 
   if (!res) return null

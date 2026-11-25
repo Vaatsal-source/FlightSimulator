@@ -199,8 +199,8 @@ export function airportLayout(a: AirportDef): AirportLayout {
   const big = a.class === 'international'
   const taxiOffset = big ? 190 : 130
   const taxiWidth = big ? 23 : 18
-  const apronDepth = big ? 260 : a.class === 'short' ? 110 : 170
-  const apronLength = Math.min(primary.length * 0.45, big ? 1200 : 600)
+  const apronDepth = big ? 340 : a.class === 'short' ? 130 : 230
+  const apronLength = Math.min(primary.length * (big ? 0.55 : 0.45), big ? 1700 : 900)
   const d = headingVector(h)
   const right = { x: -d.z, z: d.x }
   const at = (along: number, across: number) => ({

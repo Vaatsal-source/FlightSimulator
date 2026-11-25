@@ -3,7 +3,7 @@ import { AIRCRAFT_IDS, getAircraft } from '../config/aircraftCatalog'
 import { getAirport } from '../config/airports'
 import { GAME_MODES } from '../game/modes'
 import { useGameStore } from '../state/gameStore'
-import { TIMES_OF_DAY } from '../world/types'
+import { TIMES_OF_DAY, WEATHERS } from '../world/types'
 import { AircraftIcon } from './Hangar'
 import './MainMenu.css'
 
@@ -23,6 +23,13 @@ function Backdrop() {
       <div className="menu-sun" />
       <div className="menu-clouds far" />
       <div className="menu-clouds near" />
+      <svg className="menu-ridge" viewBox="0 0 1200 200" preserveAspectRatio="none">
+        <path d="M0 200 L0 120 C90 90 160 60 260 82 C360 104 420 40 540 52 C640 62 720 110 820 96 C930 80 1040 30 1200 74 L1200 200 Z" />
+      </svg>
+      <svg className="menu-airfield" viewBox="0 0 300 60" aria-hidden="true">
+        <path d="M0 60 L0 48 L40 48 L40 36 L70 36 L70 48 L120 48 L120 30 L126 30 L126 14 L132 14 L132 30 L138 30 L138 48 L190 48 L190 40 L240 40 L240 48 L300 48 L300 60 Z" />
+        <path className="menu-runway" d="M20 56 L280 56" />
+      </svg>
       <svg className="menu-island" viewBox="0 0 1200 200" preserveAspectRatio="none">
         <path d="M0 200 L0 150 C120 140 200 90 320 100 C420 108 470 60 560 70 C660 80 700 130 820 120 C930 110 1010 140 1200 135 L1200 200 Z" />
       </svg>
@@ -40,6 +47,7 @@ function ReadyCard() {
   const airportId = useGameStore((s) => s.airportId)
   const runwayEnd = useGameStore((s) => s.runwayEnd)
   const timeOfDay = useGameStore((s) => s.settings.timeOfDay)
+  const weather = useGameStore((s) => s.settings.weather)
   const selectAircraft = useGameStore((s) => s.selectAircraft)
   const updateSettings = useGameStore((s) => s.updateSettings)
   const aircraft = getAircraft(aircraftId)
@@ -70,6 +78,14 @@ function ReadyCard() {
           ›
         </button>
       </div>
+      <ul className="ready-specs" aria-label="Aircraft facts">
+        {aircraft.specs.slice(0, 3).map((sp) => (
+          <li key={sp.label}>
+            <span>{sp.label}</span>
+            <strong>{sp.value}</strong>
+          </li>
+        ))}
+      </ul>
       <div className="ready-dots" aria-hidden="true">
         {AIRCRAFT_IDS.map((id) => (
           <span key={id} className={id === aircraftId ? 'dot on' : 'dot'} />
@@ -101,6 +117,20 @@ function ReadyCard() {
           </button>
         ))}
       </div>
+      <div className="ready-time" role="radiogroup" aria-label="Weather">
+        {WEATHERS.map((w) => (
+          <button
+            key={w}
+            type="button"
+            role="radio"
+            aria-checked={w === weather}
+            className={w === weather ? 'time-chip active' : 'time-chip'}
+            onClick={() => updateSettings({ weather: w })}
+          >
+            {cap(w)}
+          </button>
+        ))}
+      </div>
     </section>
   )
 }
@@ -127,21 +157,32 @@ function PilotLog() {
   )
 }
 
+const ICONS = {
+  gate: 'M3 17h18M5 17l2-9h4l1 4h5l2 5M9 8V5h3',
+  quick: 'M3 12h14M13 6l7 6-7 6',
+  pick: 'M4 6h16M4 12h10M4 18h16',
+} as const
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg className="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d={path} />
+    </svg>
+  )
+}
+
 /** Title screen: animated backdrop, main actions, the current flight setup and best scores. */
 export function MainMenu() {
   const goToModeSelect = useGameStore((s) => s.goToModeSelect)
-  const goToFlightSchool = useGameStore((s) => s.goToFlightSchool)
-  const goToMultiplayer = useGameStore((s) => s.goToMultiplayer)
   const startFlight = useGameStore((s) => s.startFlight)
   const openOverlay = useGameStore((s) => s.openOverlay)
   const timeOfDay = useGameStore((s) => s.settings.timeOfDay)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const primary: Action[] = [
-    { label: 'Fly', hint: 'Pick an aircraft, airport and challenge', run: goToModeSelect },
-    { label: 'Flight School', hint: 'Guided lessons: take-off, landing, circuit', run: goToFlightSchool },
-    { label: 'Quick Flight', hint: 'Straight onto the runway in your current aircraft', run: () => startFlight('freeFlight') },
-    { label: 'Multiplayer', hint: 'Fly in one shared sky with everyone online', run: goToMultiplayer },
+  const primary: (Action & { icon: string })[] = [
+    { label: 'Gate Departure', hint: 'Cold and dark at the stand: start up, taxi, take off', icon: ICONS.gate, run: () => startFlight('gate') },
+    { label: 'Quick Flight', hint: 'Straight onto the runway in your current aircraft', icon: ICONS.quick, run: () => startFlight('freeFlight') },
+    { label: 'Fly', hint: 'Choose your aircraft, airport and runway', icon: ICONS.pick, run: goToModeSelect },
   ]
   const secondary: Action[] = [
     { label: 'How It Works', run: () => openOverlay('howItWorks') },
@@ -176,14 +217,18 @@ export function MainMenu() {
                   type="button"
                   className={i === 0 ? 'btn primary menu-btn' : 'btn menu-btn'}
                   autoFocus={i === 0}
+                  aria-label={a.label}
                   aria-describedby={`menu-hint-${i}`}
                   onClick={a.run}
                 >
-                  {a.label}
+                  <Icon path={a.icon} />
+                  <span className="menu-btn-text">
+                    {a.label}
+                    <span id={`menu-hint-${i}`} className="menu-hint">
+                      {a.hint}
+                    </span>
+                  </span>
                 </button>
-                <span id={`menu-hint-${i}`} className="menu-hint">
-                  {a.hint}
-                </span>
               </div>
             ))}
           </div>

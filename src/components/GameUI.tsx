@@ -3,7 +3,7 @@ import { QUALITY_LEVELS } from '../config/quality'
 import { GAME_MODES } from '../game/modes'
 import { CAMERA_MODES, LESSON_MODES, type GameMode } from '../game/types'
 import { useGameStore, type Units } from '../state/gameStore'
-import { TIMES_OF_DAY } from '../world/types'
+import { TIMES_OF_DAY, WEATHERS } from '../world/types'
 import { AirportPicker, SetupSummary } from './AirportPicker'
 import { AFTERBURNER_NOTE, ALL_BINDINGS } from './controlsData'
 import { formatStat, formatTime } from './format'
@@ -25,6 +25,8 @@ const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 /** Where each challenge puts you: on the chosen runway, landing on it, or a fixed course. */
 const MODE_WHERE: Partial<Record<GameMode, string>> = {
   freeFlight: 'Starts on your runway',
+  gate: 'Starts at the gate',
+  arrival: 'Lands on your runway',
   takeoff: 'Starts on your runway',
   landing: 'Lands on your runway',
   rings: 'Fixed course',
@@ -268,6 +270,14 @@ function SettingsPanel() {
             value={settings.timeOfDay}
             options={TIMES_OF_DAY}
             onChange={(timeOfDay) => updateSettings({ timeOfDay })}
+          />
+        </Field>
+        <Field label="Weather">
+          <Segmented
+            label="Weather"
+            value={settings.weather}
+            options={WEATHERS}
+            onChange={(weather) => updateSettings({ weather })}
           />
         </Field>
         <Field label="Default camera">

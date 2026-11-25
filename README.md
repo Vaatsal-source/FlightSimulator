@@ -24,13 +24,13 @@ Take off, fly a circuit and grease the landing, from a light trainer to an A350.
 - **Autopilot:** speed, heading, altitude and vertical-speed holds
 - **Landing assist** (press `0` near a runway): flies the approach and the 3° glide path down to 100 ft, then hands over for the flare, and goes around if the approach is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
-- **Gate departure:** start cold and dark at the stand, start the engines, taxi along the lights to the hold-short line, get clearance and take off
+- **Gate departure and arrival:** start cold and dark at the stand, refuel and board through a working jet bridge, load within weight and balance limits, start up, taxi, take off; or land, taxi in, park and deplane
+- **Night and weather:** morning, noon, evening and night, with clear, overcast or fog
 - **Flight School:** guided take-off, landing and full-circuit lessons
 - **Challenges:** take-off, landing and ring courses, with best scores kept in your pilot log
 - **3D cockpits:** a flight deck for each aircraft (round gauges, airliner glass screens, fighter HUD), with head motion and mouse look
 - **AI traffic:** airliners fly between the airports, take off and land (scenery, no collision)
 - **Time of day:** morning, noon or evening light
-- **Multiplayer:** share a room code and fly the island together, with mid-air collisions and an airborne-time leaderboard
 
 ## Quick start
 
@@ -74,7 +74,7 @@ The full list is also on the **Controls** screen in the game.
 
 ## Multiplayer
 
-Single player is unchanged and needs no server. Multiplayer adds a small server ([server/](server/)) that the browser connects to over WebSockets. Everyone online flies in the same sky.
+Multiplayer is no longer linked from the main menu (the screen and the server are still in the code). It adds a small server ([server/](server/)) that the browser connects to over WebSockets. Everyone online flies in the same sky.
 
 **How it plays**
 

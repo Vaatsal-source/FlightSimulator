@@ -26,7 +26,7 @@ describe('environmentFor', () => {
       }
       seenFog.add(look.fogColor)
     }
-    expect(seenFog.size).toBe(3)
+    expect(seenFog.size).toBe(TIMES_OF_DAY.length)
   })
 
   it('puts the sun low in the east in the morning, high at noon, low in the west in the evening', () => {
@@ -73,3 +73,42 @@ describe('snapWaterCenter', () => {
     expect(Math.abs(snapWaterCenter(12345.6) - 12345.6)).toBeLessThanOrEqual(WATER_SNAP / 2)
   })
 })
+
+describe('night and weather', () => {
+  it('night is dark, starlit and lit by a moon', () => {
+    const night = environmentFor('night')
+    const noon = environmentFor('noon')
+    expect(night.stars).toBe(1)
+    expect(noon.stars).toBe(0)
+    expect(night.sunIntensity).toBeLessThan(noon.sunIntensity / 3)
+    expect(night.hemiIntensity).toBeLessThan(noon.hemiIntensity)
+    expect(night.sunDirection.y).toBeGreaterThan(0.5)
+  })
+
+  it('weather keeps the fog the colour of the horizon, so the distance fades into the sky', () => {
+    for (const t of TIMES_OF_DAY) {
+      for (const w of ['clear', 'overcast', 'fog'] as const) {
+        const look = environmentFor(t, w)
+        expect(look.fogColor, `${t} ${w}`).toBe(look.horizonColor)
+      }
+    }
+  })
+
+  it('overcast dims the sun and adds cloud; fog cuts the visibility and thins the cloud', () => {
+    const clear = environmentFor('noon', 'clear')
+    const over = environmentFor('noon', 'overcast')
+    const fog = environmentFor('noon', 'fog')
+    expect(over.sunIntensity).toBeLessThan(clear.sunIntensity / 2)
+    expect(over.cloudScale).toBeGreaterThan(2)
+    expect(over.zenithColor).not.toBe(clear.zenithColor)
+    expect(fog.fogScale).toBeLessThan(0.25)
+    expect(fog.cloudScale).toBeLessThan(1)
+    expect(fog.stars).toBe(0)
+  })
+
+  it('is pure and cached: the same input returns the same object, clear is the plain look', () => {
+    expect(environmentFor('evening', 'fog')).toBe(environmentFor('evening', 'fog'))
+    expect(environmentFor('noon')).toBe(environmentFor('noon', 'clear'))
+  })
+})
+

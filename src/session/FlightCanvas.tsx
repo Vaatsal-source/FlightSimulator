@@ -28,6 +28,7 @@ export function FlightCanvas() {
   // One ground for physics and rendering at every quality level.
   const terrain = getTerrainSampler()
   const timeOfDay = useGameStore((s) => s.settings.timeOfDay)
+  const weather = useGameStore((s) => s.settings.weather)
   // The aircraft is fixed while the canvas is mounted (it can only change from the menus).
   const [session] = useState(
     () =>
@@ -127,6 +128,7 @@ export function FlightCanvas() {
           rings={mode === 'rings' ? session.ringView : null}
           mouseSensitivity={mouseSensitivity}
           timeOfDay={timeOfDay}
+          weather={weather}
         />
       </Canvas>
       <PerfOverlay />

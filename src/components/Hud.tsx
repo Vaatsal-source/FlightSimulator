@@ -154,6 +154,18 @@ export function Hud() {
           <div className="hud-meter" aria-hidden="true">
             <div style={{ width: `${Math.min(1, Math.max(0, t.throttle)) * 100}%` }} />
           </div>
+          {t.loading && (
+            <>
+              <div className="hud-row">
+                <span>FUEL</span>
+                <span data-testid="hud-fuel">{Math.round(t.loading.fuelKg).toLocaleString('en-US')} kg</span>
+              </div>
+              <div className="hud-row">
+                <span>GW</span>
+                <span data-testid="hud-gw">{(t.loading.massKg / 1000).toFixed(1)} t</span>
+              </div>
+            </>
+          )}
           {isJet ? (
             <div className="hud-row">
               <span>N1</span>

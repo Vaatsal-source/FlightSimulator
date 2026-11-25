@@ -1,5 +1,5 @@
 import { Color, LinearSRGBColorSpace, Vector3 } from 'three'
-import type { TimeOfDay } from '../types'
+import type { TimeOfDay, Weather } from '../types'
 
 /** Radius of the sky dome (m). It follows the camera, so it only needs to sit inside the camera far plane. */
 export const SKY_RADIUS = 30000
@@ -29,6 +29,11 @@ export interface EnvironmentLook {
   /** Self-lit colour of cloud puffs: their shaded underside. */
   cloudShade: number
   cloudShadeIntensity: number
+  /** 0..1 brightness of the stars. */
+  stars: number
+  /** Multipliers on the cloud count and on the fog distance (weather). */
+  cloudScale: number
+  fogScale: number
 }
 
 function dir(x: number, y: number, z: number): Vector3 {
@@ -53,6 +58,9 @@ const LOOKS: Record<TimeOfDay, EnvironmentLook> = {
     cloudColor: 0xffe6d6,
     cloudShade: 0x9a8aa4,
     cloudShadeIntensity: 0.5,
+    stars: 0,
+    cloudScale: 1,
+    fogScale: 1,
   },
   // High white sun, blue sky.
   noon: {
@@ -71,6 +79,9 @@ const LOOKS: Record<TimeOfDay, EnvironmentLook> = {
     cloudColor: 0xffffff,
     cloudShade: 0x8394a8,
     cloudShadeIntensity: 0.55,
+    stars: 0,
+    cloudScale: 1,
+    fogScale: 1,
   },
   // Low orange sun in the west, deeper blue zenith.
   evening: {
@@ -89,12 +100,83 @@ const LOOKS: Record<TimeOfDay, EnvironmentLook> = {
     cloudColor: 0xffc8a0,
     cloudShade: 0x6a5a88,
     cloudShadeIntensity: 0.5,
+    stars: 0,
+    cloudScale: 1,
+    fogScale: 1,
+  },
+  // Moon high in the sky, a deep blue dome, faint light.
+  night: {
+    fogColor: 0x0b1226,
+    horizonColor: 0x0b1226,
+    zenithColor: 0x02050f,
+    sunDirection: dir(0.35, 0.72, -0.55),
+    sunColor: 0xa9c0ff,
+    sunIntensity: 0.38,
+    hemiSkyColor: 0x24345c,
+    hemiGroundColor: 0x10141c,
+    hemiIntensity: 0.55,
+    waterDeep: 0x050d18,
+    waterShallow: 0x0c2030,
+    waterLight: 0.3,
+    cloudColor: 0x39446a,
+    cloudShade: 0x11182c,
+    cloudShadeIntensity: 0.6,
+    stars: 1,
+    cloudScale: 1,
+    fogScale: 1,
   },
 }
 
-/** The look for a time of day. Pure: the same input always returns the same object. */
-export function environmentFor(t: TimeOfDay): EnvironmentLook {
-  return LOOKS[t]
+const lum = (hex: number): number => {
+  const c = new Color(hex)
+  return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
+}
+
+/** `hex` pulled towards a grey of its own brightness (lifted by `lift`), `k` of the way. */
+function greyed(hex: number, k: number, lift = 0): number {
+  const l = Math.min(1, lum(hex) + lift)
+  const grey = new Color().setRGB(l, l * 1.02, l * 1.05)
+  return new Color(hex).lerp(grey, k).getHex()
+}
+
+function weatherLook(base: EnvironmentLook, weather: Weather): EnvironmentLook {
+  if (weather === 'clear') return base
+  const fog = weather === 'fog'
+  const k = fog ? 0.8 : 0.62
+  const lift = fog ? 0.12 : 0
+  const g = (hex: number) => greyed(hex, k, lift)
+  const horizon = g(base.horizonColor)
+  return {
+    ...base,
+    fogColor: horizon,
+    horizonColor: horizon,
+    zenithColor: g(base.zenithColor),
+    sunIntensity: base.sunIntensity * (fog ? 0.4 : 0.32),
+    hemiSkyColor: g(base.hemiSkyColor),
+    hemiIntensity: base.hemiIntensity * 1.12,
+    waterDeep: g(base.waterDeep),
+    waterShallow: g(base.waterShallow),
+    waterLight: base.waterLight * 0.8,
+    cloudColor: g(base.cloudColor),
+    cloudShade: g(base.cloudShade),
+    cloudShadeIntensity: Math.min(1, base.cloudShadeIntensity * 1.3),
+    stars: base.stars * (fog ? 0 : 0.2),
+    cloudScale: fog ? 0.5 : 2.4,
+    fogScale: fog ? 0.14 : 0.8,
+  }
+}
+
+const lookCache = new Map<string, EnvironmentLook>()
+
+/** The look for a time of day and weather. Pure: the same input always returns the same object. */
+export function environmentFor(t: TimeOfDay, weather: Weather = 'clear'): EnvironmentLook {
+  const key = `${t}/${weather}`
+  let look = lookCache.get(key)
+  if (!look) {
+    look = weatherLook(LOOKS[t], weather)
+    lookCache.set(key, look)
+  }
+  return look
 }
 
 /**

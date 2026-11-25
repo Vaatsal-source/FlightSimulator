@@ -3,6 +3,7 @@ import { useMultiplayerStore } from '../state/multiplayerStore'
 import { RemoteAircraft } from './remote/RemoteAircraft'
 import { AircraftModel } from './aircraft/AircraftModel'
 import { Airports } from './airport/Airports'
+import { JetBridge } from './airport/JetBridge'
 import { TaxiRoute } from './airport/TaxiRoute'
 import { CameraRig } from './camera/CameraRig'
 import { CockpitModel } from './cockpit/CockpitModel'
@@ -37,25 +38,27 @@ function WorldContent({
   rings,
   mouseSensitivity,
   timeOfDay,
+  weather,
 }: FlightWorldProps) {
   const profile = QUALITY_PROFILES[quality]
-  const env = environmentFor(timeOfDay)
+  const env = environmentFor(timeOfDay, weather)
   // Multiplayer only: the roster is empty in single player, so nothing extra mounts.
   const hasOtherPilots = useMultiplayerStore((s) => s.roster.length > 1)
   return (
     <>
-      <fog attach="fog" args={[env.fogColor, profile.fogFar * 0.25, profile.fogFar]} />
+      <fog attach="fog" args={[env.fogColor, profile.fogFar * env.fogScale * 0.25, profile.fogFar * env.fogScale]} />
 
       {/* The camera rig runs first so everything that follows the camera sees its final pose. */}
       <CameraRig renderState={renderState} terrain={terrain} mode={cameraMode} mouseSensitivity={mouseSensitivity} />
-      <Sky timeOfDay={timeOfDay} />
-      <Lighting renderState={renderState} profile={profile} timeOfDay={timeOfDay} />
+      <Sky timeOfDay={timeOfDay} weather={weather} />
+      <Lighting renderState={renderState} profile={profile} timeOfDay={timeOfDay} weather={weather} />
 
       <TerrainSystem terrain={terrain} profile={profile} />
-      <Water profile={profile} timeOfDay={timeOfDay} />
+      <Water profile={profile} timeOfDay={timeOfDay} weather={weather} />
       <Airports shadows={profile.shadows} />
       <TaxiRoute />
-      <Clouds profile={profile} timeOfDay={timeOfDay} />
+      <JetBridge />
+      <Clouds profile={profile} timeOfDay={timeOfDay} weather={weather} />
       <TrafficFleet terrain={terrain} profile={profile} />
       {rings && <Rings course={rings} />}
       <AircraftModel renderState={renderState} cameraMode={cameraMode} shadows={profile.shadows} />

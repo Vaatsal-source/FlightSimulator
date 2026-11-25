@@ -32,7 +32,7 @@ describe('taxi route planning', () => {
     // The line-up point is close to the threshold, not mid-runway.
     expect(Math.hypot(b.x - route.end.threshold.x, b.z - route.end.threshold.z)).toBeLessThan(140)
     // The stand is within a short taxi of the hold line.
-    expect(routeDistance(route.points, route.points[0], 1, route.holdIndex)).toBeLessThan(2400)
+    expect(routeDistance(route.points, route.points[0], 1, route.holdIndex)).toBeLessThan(3200)
   })
 
   it('stands face the taxiway: the first leg heads towards the runway', () => {
@@ -137,7 +137,7 @@ describe('GroundOps phases', () => {
     tick({ engineRunning: true, parkingBrake: false })
     expect(ops.phase).toBe('taxi')
     expect(tick({ groundSpeed: TAXI_SPEED_LIMIT + 2 }).warning).toContain('Slow down')
-    expect(tick({ x: route.stand.x + 400, z: route.stand.z - 400, groundSpeed: 3 }).warning).toContain('Off the taxiway')
+    expect(tick({ x: route.stand.x + 4000, z: route.stand.z + 4000, groundSpeed: 3 }).warning).toContain('Off the taxiway')
     const lu = route.points[route.lineUpIndex]
     const v = tick({ x: lu.x, z: lu.z, groundSpeed: 3 })
     expect(v.warning).toContain('incursion')

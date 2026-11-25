@@ -178,7 +178,9 @@ export class AircraftPhysics implements FlightModel {
   readonly state: AircraftState
   readonly previousState: AircraftState
   readonly fixedDt: number
-  readonly config: AircraftConfig
+  /** The flight-model parameters in use: the type's, with mass, inertia and CG effects applied by setLoad(). */
+  config: AircraftConfig
+  private baseConfig: AircraftConfig
   readonly aircraftId: AircraftId
 
   private readonly terrain: TerrainSampler
@@ -273,6 +275,7 @@ export class AircraftPhysics implements FlightModel {
   constructor(opts: AircraftPhysicsOptions) {
     this.terrain = opts.terrain
     this.config = opts.config ?? getAircraftConfig(opts.aircraft ?? 'trainer')
+    this.baseConfig = this.config
     this.aircraftId = opts.aircraft ?? this.config.id
     const dt = opts.fixedDt
     this.fixedDt = dt !== undefined && Number.isFinite(dt) && dt > 0 && dt <= 0.05 ? dt : DEFAULT_DT
@@ -349,6 +352,35 @@ export class AircraftPhysics implements FlightModel {
   private static readonly START_SECONDS_JET = 30
   private starterOn = false
   private startProgress = 0
+
+  get massKg(): number {
+    return this.config.mass
+  }
+
+  setLoad(load: { massKg: number; cgShiftM: number }): void {
+    const base = this.baseConfig
+    const mass = Number.isFinite(load.massKg) ? Math.max(0.3 * base.mass, Math.min(2 * base.mass, load.massKg)) : base.mass
+    const shift = Number.isFinite(load.cgShiftM) ? load.cgShiftM : 0
+    const k = mass / base.mass
+    // A CG further aft makes the aircraft less stable and trims it nose-up: the lift acts further ahead of the CG.
+    const arm = shift / base.chord
+    this.config = {
+      ...base,
+      mass,
+      inertia: { x: base.inertia.x * k, y: base.inertia.y * k, z: base.inertia.z * k },
+      aero: { ...base.aero, cm0: base.aero.cm0 + base.aero.cl0 * arm, cmAlpha: base.aero.cmAlpha + base.aero.clAlpha * arm },
+    }
+    // Re-seat the gear: the same springs carry a different weight.
+    const g = base.geometry.gear
+    const weight = mass * GRAVITY
+    const mainZ = (g.mainLeft.z + g.mainRight.z) / 2
+    const noseLoad = (weight * mainZ) / (mainZ - g.nose.z)
+    const mainLoad = (weight - noseLoad) / 2
+    const gc = base.gear
+    this.gear[0].extension = mainLoad / gc.mainSpring
+    this.gear[1].extension = mainLoad / gc.mainSpring
+    this.gear[2].extension = noseLoad / gc.noseSpring
+  }
 
   get engineStartProgress(): number {
     return this.startProgress

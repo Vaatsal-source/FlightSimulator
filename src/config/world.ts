@@ -104,6 +104,7 @@ export const SPAWNS: Record<GameMode, SpawnState> = {
   ...BASE_SPAWNS,
   // spawnFor() computes the stand from the airport; this is only the type's placeholder.
   gate: { ...BASE_SPAWNS.freeFlight, engineRunning: false },
+  arrival: BASE_SPAWNS.landing,
   lessonTakeoff: BASE_SPAWNS.takeoff,
   lessonLanding: BASE_SPAWNS.landing,
   lessonCircuit: BASE_SPAWNS.takeoff,

@@ -73,6 +73,7 @@ export const AIRPORTS: readonly AirportDef[] = [
     runways: [
       { headingDeg: 90, length: 3400, width: 60 },
       { headingDeg: 90, length: 2900, width: 45, along: 0, across: -400 },
+      { headingDeg: 90, length: 2500, width: 45, along: 150, across: -800 },
     ],
   },
   {
@@ -85,6 +86,7 @@ export const AIRPORTS: readonly AirportDef[] = [
     runways: [
       { headingDeg: 90, length: 3200, width: 60 },
       { headingDeg: 90, length: 2700, width: 45, along: 0, across: -400 },
+      { headingDeg: 90, length: 2400, width: 45, along: 150, across: -800 },
     ],
   },
   {

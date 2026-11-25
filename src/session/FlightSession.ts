@@ -14,7 +14,11 @@ import type { AircraftId } from '../config/aircraftCatalog'
 import { GRAVITY } from '../simulation/atmosphere'
 import { approachGuidance, getRunwayEnd, nearestAirport } from '../game/airportGeometry'
 import { createChallenge, type Challenge } from '../game/challenges'
-import { GroundOps, planTaxiRoute } from '../game/groundOps'
+import { newTurnaround, type GateServices } from '../game/gateServices'
+import { ArrivalOps, planArrivalRoute } from '../game/arrivalOps'
+import { GateServices as ServicesClass } from '../game/gateServices'
+import { GroundOps, planTaxiRoute, type GroundInputs, type GroundView } from '../game/groundOps'
+import { computeLoadSheet, defaultLoading, fuelBurnKg, type Loading } from '../game/loading'
 import { atMultiplayerStart, HOME_PLACE, spawnFor, type FlightPlace } from '../game/spawns'
 import { safePitchAtHeight, techniqueFor, type Technique } from '../game/technique'
 import { RING_COURSE } from '../game/courses'
@@ -99,8 +103,14 @@ export class FlightSession {
   private athrThrottle = 0
   private apDisconnectCount = 0
   /** Gate departure: the ground-operations state machine, null in other modes. */
-  private groundOps: GroundOps | null = null
+  private groundOps: { update(i: GroundInputs & { servicesDone?: boolean }): GroundView; readonly view: GroundView } | null = null
   private parkingBrake = false
+  /** The turnaround at the stand (gate departure), and otherwise the plain load the aircraft flies with. */
+  private services: GateServices | null = null
+  private loading: Loading | null = null
+  private burnAccum = 0
+  private outOfFuel = false
+  private loadDirty = false
   private engineTogglesSeen = 0
   private parkingTogglesSeen = 0
   private mode: GameMode
@@ -199,15 +209,29 @@ export class FlightSession {
     this.engineTogglesSeen = this.keyboard.engineToggles
     this.parkingTogglesSeen = this.keyboard.parkingBrakeToggles
     if (mode === 'gate') {
-      const route = planTaxiRoute(place)
-      this.groundOps = new GroundOps(route, getAircraft(this.aircraftId).takeoffFlaps)
+      const route = planTaxiRoute(place, this.aircraftId)
+      this.services = newTurnaround(this.aircraftId)
+      this.groundOps = new GroundOps(route, getAircraft(this.aircraftId).takeoffFlaps, this.services !== null)
       this.parkingBrake = true
       useGroundStore.getState().setRoute(route)
+    } else if (mode === 'arrival') {
+      const route = planArrivalRoute(place, this.aircraftId)
+      const full = defaultLoading(this.aircraftId)
+      // Arrives loaded; the passengers come off at the gate.
+      this.services = full ? new ServicesClass(this.aircraftId, full) : null
+      this.groundOps = new ArrivalOps(route, this.services !== null)
+      this.parkingBrake = false
+      useGroundStore.getState().setRoute(route)
     } else {
+      this.services = null
       this.groundOps = null
       this.parkingBrake = false
       useGroundStore.getState().setRoute(null)
     }
+    this.loading = this.services ? null : defaultLoading(this.aircraftId)
+    this.burnAccum = 0
+    this.outOfFuel = false
+    this.applyLoad()
     this.renderState.teleportId++
     this.syncRenderState(1)
     this.publish()
@@ -512,6 +536,7 @@ export class FlightSession {
   private readonly stepOnce = (dt: number): void => {
     const controls = this.keyboard.update(dt)
     this.handleGroundKeys()
+    this.runServices(dt)
     if (this.parkingBrake) controls.brakes = 1
     this.handleAssistRequest()
     if (this.landingAssist.active) this.applyLandingAssist(controls, dt)
@@ -547,14 +572,57 @@ export class FlightSession {
     if (kb.engineToggles !== this.engineTogglesSeen) {
       this.engineTogglesSeen = kb.engineToggles
       const s = this.physics.state
+      const blocked = this.services !== null && !this.services.view.ready
       if (this.physics.engineStartProgress > 0) this.physics.stopEngines()
-      else if (!s.engine.running) this.physics.startEngines()
-      else if (s.onGround && s.groundSpeed < 3) this.physics.stopEngines()
+      else if (!s.engine.running) {
+        // No fuel, no start; and not with the bridge attached or the doors open.
+        if (!blocked && !this.outOfFuel) this.physics.startEngines()
+      } else if (s.onGround && s.groundSpeed < 3) this.physics.stopEngines()
     }
     if (kb.parkingBrakeToggles !== this.parkingTogglesSeen) {
       this.parkingTogglesSeen = kb.parkingBrakeToggles
-      this.parkingBrake = !this.parkingBrake
+      // The brake stays on until the turnaround is finished.
+      if (!(this.parkingBrake && this.services !== null && !this.services.view.ready)) this.parkingBrake = !this.parkingBrake
     }
+  }
+
+  /** The turnaround's clock and commands, and the fuel the engines burn. */
+  private runServices(dt: number): void {
+    const s = this.physics.state
+    if (this.services) {
+      const ctx = { parkingBrake: this.parkingBrake, engineRunning: s.engine.running, groundSpeed: s.groundSpeed }
+      for (const cmd of useGroundStore.getState().drain()) this.services.command(cmd, ctx)
+      if (this.services.update(dt, ctx)) this.loadDirty = true
+      if (!this.services.view.ready) this.parkingBrake = true
+    }
+    if (s.engine.running) {
+      this.burnAccum += fuelBurnKg(s.engine.thrust, dt)
+      if (this.burnAccum >= 1) {
+        this.burnFuel(this.burnAccum)
+        this.burnAccum = 0
+      }
+    }
+  }
+
+  private burnFuel(kg: number): void {
+    if (this.services) this.services.burnFuel(kg)
+    else if (this.loading) this.loading = { ...this.loading, fuelKg: Math.max(0, this.loading.fuelKg - kg) }
+    else return
+    this.loadDirty = true
+    const left = this.services ? this.services.currentLoading.fuelKg : (this.loading?.fuelKg ?? 1)
+    if (left <= 0 && !this.outOfFuel) {
+      this.outOfFuel = true
+      this.physics.stopEngines()
+    }
+  }
+
+  /** Mass and CG of the current load into the flight model. */
+  private applyLoad(): void {
+    const l = this.services ? this.services.currentLoading : this.loading
+    if (!l) return
+    const sheet = computeLoadSheet(this.aircraftId, l)
+    if (sheet) this.physics.setLoad({ massKg: sheet.massKg, cgShiftM: sheet.cgShiftM })
+    this.loadDirty = false
   }
 
   private syncKeyboard(): void {
@@ -587,6 +655,7 @@ export class FlightSession {
 
   private publish(): void {
     const s = this.physics.state
+    if (this.loadDirty) this.applyLoad()
     this.syncAutopilotTargets()
     if (this.landingAssist.active) useAutopilotStore.setState({ assist: this.landingAssist.view })
     publishTelemetry({
@@ -630,8 +699,9 @@ export class FlightSession {
       touchdown: this.lastTouchdown,
       engineStart: this.physics.engineStartProgress,
       parkingBrake: this.parkingBrake,
+      loading: this.loadingView(),
       ground: this.groundOps
-        ? this.groundOps.update({
+        ? this.withServices(this.groundOps.update({
             x: s.position.x,
             z: s.position.z,
             headingDeg: s.headingDeg,
@@ -643,9 +713,34 @@ export class FlightSession {
             parkingBrake: this.parkingBrake,
             flaps: s.controls.flaps,
             time: s.simTime,
-          })
+            servicesReady: this.services?.view.ready,
+            servicesBlocker: this.services?.view.blocker,
+            loaded: this.services ? this.services.view.loading.pax > 0 && this.services.view.loading.fuelKg >= 1500 : undefined,
+            servicesDone: this.services ? this.services.view.ready && this.services.view.loading.pax === 0 : undefined,
+          }))
         : null,
     })
+  }
+
+  private withServices(view: import('../game/groundOps').GroundView): import('../game/groundOps').GroundView {
+    return { ...view, services: this.services ? this.services.view : null }
+  }
+
+  private loadingView(): import('../state/telemetry').LoadingView | null {
+    const l = this.services ? this.services.currentLoading : this.loading
+    if (!l) return null
+    const sheet = computeLoadSheet(this.aircraftId, l)
+    if (!sheet) return null
+    return {
+      massKg: sheet.massKg,
+      fuelKg: sheet.fuelKg,
+      pax: sheet.pax,
+      cgPct: sheet.cgPct,
+      cgInLimits: sheet.cgInLimits,
+      overweight: sheet.overweight,
+      rotateSpeed: sheet.rotateSpeed,
+      approachSpeed: sheet.approachSpeed,
+    }
   }
 
   private navInfo(): NavInfo {

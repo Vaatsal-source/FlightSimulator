@@ -6,6 +6,7 @@
  * the aircraft's state and publishes what it reports.
  */
 
+import { getAircraft, type AircraftId } from '../config/aircraftCatalog'
 import { getAirport } from '../config/airports'
 import {
   airportLayout,
@@ -18,6 +19,7 @@ import {
   type RunwayEnd,
 } from './airportGeometry'
 import type { SpawnState } from '../simulation/types'
+import type { ServicesView } from './gateServices'
 import type { FlightPlace } from './spawns'
 
 export interface Pt {
@@ -27,6 +29,8 @@ export interface Pt {
 
 export interface TaxiRoute {
   airportId: string
+  /** A departure runs from the stand to the runway, an arrival from the runway to the stand. */
+  kind: 'departure' | 'arrival'
   /** Where the aircraft is parked and which way it faces. */
   stand: Pt & { headingDeg: number }
   /** Stand, taxiway, connector, hold-short point, runway centreline, line-up point. */
@@ -37,12 +41,24 @@ export interface TaxiRoute {
   lineUpIndex: number
   /** The runway end the route leads to (always on the primary runway). */
   end: RunwayEnd
+  /** The jet bridge at the stand: where it is rooted, which way it reaches, how far, and how high its floor is. */
+  bridge: { base: Pt; dir: Pt; length: number; floorY: number; doorWorld: Pt }
 }
+
+/** Left-hand front door of each airliner, in the body frame (x right, y up, z aft; metres from the CG). */
+const DOORS: Partial<Record<AircraftId, { x: number; y: number; z: number }>> = {
+  a320: { x: -1.98, y: 0.2, z: -11.9 },
+  a220: { x: -1.73, y: 0.1, z: -14.2 },
+  a350: { x: -2.98, y: 0.4, z: -25.5 },
+  global8000: { x: -1.25, y: 0.1, z: -13.2 },
+}
+/** Docked reach of the bridge, from the terminal pod to the door (m). */
+export const BRIDGE_LENGTH = 24
+/** The door sits this far inside the apron edge (m). */
+const DOOR_INSET = 10
 
 const RAD = Math.PI / 180
 
-/** Distance from the apron edge to the stand (m). */
-const STAND_INSET = 50
 /** Hold-short line, from the runway edge (m). */
 const HOLD_OFFSET = 38
 /** Line-up point, along the runway from the threshold (m). */
@@ -62,7 +78,7 @@ function departureEnd(place: FlightPlace): RunwayEnd {
 }
 
 /** Parking stand and the full route for a gate departure from `place`. */
-export function planTaxiRoute(place: FlightPlace): TaxiRoute {
+export function planTaxiRoute(place: FlightPlace, aircraftId: AircraftId = 'a320'): TaxiRoute {
   const end = departureEnd(place)
   const airport = end.airport
   const layout = airportLayout(airport)
@@ -77,11 +93,16 @@ export function planTaxiRoute(place: FlightPlace): TaxiRoute {
 
   const taxiAcross = toLocal(primary.rect, layout.taxiway.cx, layout.taxiway.cz).across
   const apronAcross = toLocal(primary.rect, layout.apron.cx, layout.apron.cz).across
-  const standAcross = apronAcross - layout.apron.width / 2 + STAND_INSET
+  // Parked parallel to the taxiway, nose towards -along, left door to the terminal: the door sits just inside the apron edge.
+  const door = DOORS[aircraftId] ?? DOORS.a320!
+  const apronFar = apronAcross + layout.apron.width / 2
+  const standAcross = apronFar - DOOR_INSET - Math.abs(door.x)
   const standAlong = -0.22 * layout.apron.length
   const stand = at(standAlong, standAcross)
-  // Facing the runway: along -right.
-  const standHeading = headingOf(-right.x, -right.z)
+  const standHeading = headingOf(-d.x, -d.z)
+  const doorAlong = standAlong + door.z // forward is -along, and door.z is negative
+  const doorAcross = standAcross + Math.abs(door.x)
+  const gearDrop = -getAircraft(aircraftId).geometry.gear.mainLeft.y
 
   // The connector nearest the threshold of the departure end.
   const len = primary.def.length
@@ -93,7 +114,8 @@ export function planTaxiRoute(place: FlightPlace): TaxiRoute {
 
   const points: Pt[] = [
     stand,
-    at(standAlong, taxiAcross),
+    at(standAlong - 40, standAcross),
+    at(standAlong - 40, taxiAcross),
     at(connectorAlong, taxiAcross),
     at(connectorAlong, holdAcross),
     at(connectorAlong, 0),
@@ -101,17 +123,26 @@ export function planTaxiRoute(place: FlightPlace): TaxiRoute {
   ]
   return {
     airportId: airport.id,
+    kind: 'departure',
     stand: { ...stand, headingDeg: standHeading },
     points,
-    holdIndex: 3,
-    lineUpIndex: 5,
+    holdIndex: 4,
+    lineUpIndex: 6,
     end,
+    bridge: {
+      base: at(doorAlong, doorAcross + BRIDGE_LENGTH),
+      // From the terminal towards the aircraft: back towards the runway side.
+      dir: { x: -right.x, z: -right.z },
+      length: BRIDGE_LENGTH,
+      floorY: gearDrop + door.y - 0.9,
+      doorWorld: at(doorAlong, doorAcross),
+    },
   }
 }
 
 /** The spawn for a gate departure: parked on the stand, engines off, brakes set by the session. */
-export function gateStandSpawn(place: FlightPlace, _takeoffFlaps: number): SpawnState {
-  const route = planTaxiRoute(place)
+export function gateStandSpawn(place: FlightPlace, aircraftId: AircraftId): SpawnState {
+  const route = planTaxiRoute(place, aircraftId)
   return {
     position: { x: route.stand.x, y: getAirport(route.airportId).elevation, z: route.stand.z },
     headingDeg: route.stand.headingDeg,
@@ -169,6 +200,10 @@ export interface GroundInputs {
   flaps: number
   /** Seconds of simulation time. */
   time: number
+  /** The turnaround at the stand, when the aircraft has one: whether it is finished, what is in the way, and whether it is loaded. */
+  servicesReady?: boolean
+  servicesBlocker?: string | null
+  loaded?: boolean
 }
 
 export interface ChecklistItem {
@@ -178,7 +213,7 @@ export interface ChecklistItem {
 }
 
 export interface GroundView {
-  phase: GroundPhase
+  phase: GroundPhase | import('./arrivalOps').ArrivalPhase
   /** The latest radio call or prompt. */
   atc: string
   /** A caution about the current taxi, or null. */
@@ -188,6 +223,8 @@ export interface GroundView {
   taxi: { distanceToHold: number; bearingRelDeg: number; nextIndex: number } | null
   /** Take-off clearance has been given. */
   cleared: boolean
+  /** The turnaround at the stand (bridge, doors, fuel, passengers, loadsheet); null for aircraft without one. */
+  services: ServicesView | null
 }
 
 /** Faster than this on the taxiway is flagged (m/s, about 16 kt). */
@@ -214,8 +251,14 @@ export class GroundOps {
   constructor(
     private readonly route: TaxiRoute,
     private readonly takeoffFlaps: number,
+    private readonly hasServices = false,
   ) {
-    this.atc = this.say('Tower', 'cold and dark. Press N to start the engines, K releases the parking brake.')
+    this.atc = this.say(
+      'Tower',
+      hasServices
+        ? 'cold and dark at the gate. Extend the bridge, refuel and board, close up, then press N to start the engines.'
+        : 'cold and dark. Press N to start the engines, K releases the parking brake.',
+    )
     this.view_ = this.build(null)
   }
 
@@ -268,6 +311,9 @@ export class GroundOps {
     }
 
     this.warning = null
+    if (this._phase === 'coldDark' && this.hasServices && i.servicesBlocker) {
+      this.warning = `Turnaround not finished: ${i.servicesBlocker}.`
+    }
     if (this._phase === 'taxi' || this._phase === 'holdShort') {
       // Progress follows the nearest stretch of the route, so cutting a corner does not leave the guidance behind.
       let bestSeg = -1
@@ -351,7 +397,14 @@ export class GroundOps {
       warning: this.warning,
       cleared: this.cleared,
       taxi,
+      services: null,
       checklist: [
+        ...(this.hasServices
+          ? [
+              { id: 'loaded', label: 'Fuel and passengers aboard', done: this.sawEngines || (i?.loaded ?? false) },
+              { id: 'closed', label: 'Doors closed, bridge retracted', done: this.sawEngines || (i?.servicesReady ?? false) },
+            ]
+          : []),
         { id: 'engines', label: 'Engines running', done: this.sawEngines && (i?.engineRunning ?? false) },
         { id: 'brake', label: 'Parking brake released', done: this.sawEngines && i !== null && !i.parkingBrake },
         { id: 'flaps', label: 'Flaps set for take-off', done: i !== null && Math.abs(i.flaps - this.takeoffFlaps) < 0.05 },

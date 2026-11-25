@@ -32,10 +32,13 @@ afterEach(() => {
 })
 
 describe('Multiplayer lobby', () => {
-  it('is reachable from the main menu, beside the single-player options', () => {
+  it('the main menu no longer offers it, but the screen still works from the store', () => {
     render(<GameUI />)
     expect(screen.getByRole('button', { name: 'Quick Flight' })).toBeTruthy()
-    click('Multiplayer')
+    expect(screen.queryByRole('button', { name: 'Multiplayer' })).toBeNull()
+    cleanup()
+    useGameStore.getState().goToMultiplayer()
+    render(<GameUI />)
     expect(useGameStore.getState().screen).toBe('multiplayer')
     expect(screen.getByRole('region', { name: 'Multiplayer' })).toBeTruthy()
   })

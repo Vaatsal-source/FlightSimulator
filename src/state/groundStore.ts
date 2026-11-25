@@ -4,14 +4,27 @@
  */
 
 import { create } from 'zustand'
+import type { ServiceCommand } from '../game/gateServices'
 import type { TaxiRoute } from '../game/groundOps'
 
 interface GroundState {
   route: TaxiRoute | null
   setRoute(route: TaxiRoute | null): void
+  /** Commands from the turnaround panel, waiting for the flight session to act on them. */
+  queue: ServiceCommand[]
+  send(command: ServiceCommand): void
+  /** Take every waiting command (the session calls this each step). */
+  drain(): ServiceCommand[]
 }
 
-export const useGroundStore = create<GroundState>()((set) => ({
+export const useGroundStore = create<GroundState>()((set, get) => ({
   route: null,
-  setRoute: (route) => set({ route }),
+  setRoute: (route) => set({ route, queue: [] }),
+  queue: [],
+  send: (command) => set((s) => ({ queue: [...s.queue, command] })),
+  drain: () => {
+    const q = get().queue
+    if (q.length > 0) set({ queue: [] })
+    return q
+  },
 }))

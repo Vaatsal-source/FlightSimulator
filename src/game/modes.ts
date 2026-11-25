@@ -38,8 +38,23 @@ export const GAME_MODES: readonly GameModeInfo[] = [
     timeLimit: null,
   },
   {
-    id: 'takeoff',
+    id: 'arrival',
     kind: 'challenge',
+    name: 'Gate Arrival',
+    tagline: 'Land, taxi in, park and unload',
+    description:
+      'You are on a 3-degree final approach. Land, vacate the runway at the green lights, taxi to the gate and stop on the line. Set the parking brake, shut the engines down, then connect the jet bridge, open the doors and deplane.',
+    objectives: [
+      'Land and vacate the runway',
+      'Taxi to the gate at 15 knots or less and park square on the line',
+      'Shut down, connect the bridge and deplane the passengers',
+    ],
+    timeLimit: null,
+  },
+  {
+    id: 'takeoff',
+    // Not offered any more; the Flight School lessons still spawn through this mode.
+    kind: 'lesson',
     name: 'Take-off Challenge',
     tagline: 'Get airborne and climb out cleanly',
     description:
@@ -53,7 +68,8 @@ export const GAME_MODES: readonly GameModeInfo[] = [
   },
   {
     id: 'landing',
-    kind: 'challenge',
+    // Not offered any more; the Flight School lessons still spawn through this mode.
+    kind: 'lesson',
     name: 'Landing Challenge',
     tagline: 'Bring it down gently on your chosen runway',
     description:

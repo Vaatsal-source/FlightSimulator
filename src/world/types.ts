@@ -20,8 +20,14 @@ export interface FlightWorldProps {
   mouseSensitivity: number
   /** Sun position and sky/fog/water colours. */
   timeOfDay: TimeOfDay
+  weather: Weather
 }
 
-export type TimeOfDay = 'morning' | 'noon' | 'evening'
+export type TimeOfDay = 'morning' | 'noon' | 'evening' | 'night'
 
-export const TIMES_OF_DAY: readonly TimeOfDay[] = ['morning', 'noon', 'evening']
+export const TIMES_OF_DAY: readonly TimeOfDay[] = ['morning', 'noon', 'evening', 'night']
+
+/** Weather presets: they change the light, the haze and the cloud cover (the flight model has no wind yet). */
+export type Weather = 'clear' | 'overcast' | 'fog'
+
+export const WEATHERS: readonly Weather[] = ['clear', 'overcast', 'fog']

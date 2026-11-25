@@ -71,6 +71,19 @@ export interface TelemetrySnapshot {
   parkingBrake: boolean
   /** Gate departure state (phase, ATC, checklist, taxi guidance); null in other modes. */
   ground: GroundView | null
+  /** Weight and balance for the airliners (null for the trainer and the F-22). */
+  loading: LoadingView | null
+}
+
+export interface LoadingView {
+  massKg: number
+  fuelKg: number
+  pax: number
+  cgPct: number
+  cgInLimits: boolean
+  overweight: boolean
+  rotateSpeed: number
+  approachSpeed: number
 }
 
 export interface NavInfo {
@@ -126,6 +139,7 @@ export const INITIAL_TELEMETRY: Readonly<TelemetrySnapshot> = deepFreeze({
   engineStart: 0,
   parkingBrake: false,
   ground: null,
+  loading: null,
 })
 
 function deepFreeze<T extends object>(obj: T): T {

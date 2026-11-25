@@ -201,6 +201,10 @@ export interface FlightModel {
   reset(spawn: SpawnState): void
   /** Crash now with `reason` (multiplayer collisions). No-op once crashed. */
   forceCrash(reason: string): void
+  /** Gross mass (kg) and how far aft of the design CG the centre of gravity sits (m, negative = forward). */
+  setLoad(load: { massKg: number; cgShiftM: number }): void
+  /** Current gross mass (kg). */
+  readonly massKg: number
   /** Begin the engine start sequence. No-op while running, starting or crashed. */
   startEngines(): void
   /** Shut the engines down at once. */

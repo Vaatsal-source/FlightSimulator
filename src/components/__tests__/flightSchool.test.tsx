@@ -43,9 +43,10 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('Flight School screens', () => {
-  it('main menu opens Flight School', () => {
+  it('the main menu no longer offers Flight School (the screen is still reachable from the store)', () => {
     render(<GameUI />)
-    click('Flight School')
+    expect(screen.queryByRole('button', { name: 'Flight School' })).toBeNull()
+    useGameStore.getState().goToFlightSchool()
     expect(state().screen).toBe('flightSchool')
   })
 

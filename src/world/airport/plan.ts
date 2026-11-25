@@ -87,7 +87,7 @@ export interface PapiPlan {
   cz: number
 }
 
-export type BuildingKind = 'terminal' | 'gate' | 'tower' | 'tower-cab' | 'hangar' | 'shelter' | 'control'
+export type BuildingKind = 'terminal' | 'gate' | 'bridge' | 'tower' | 'tower-cab' | 'hangar' | 'shelter' | 'control'
 
 export interface BuildingPlacement {
   kind: BuildingKind
@@ -335,22 +335,37 @@ function buildBuildings(a: AirportDef, out: BuildingPlacement[]): void {
       { kind: 'tower-cab', x: apronFar + off, z: -(apronAlong + along), width: size * 1.7, depth: size * 1.7, height: size * 0.6, shape: 'box', ridge: 0, base: h, color: GLASS },
     )
   }
+  // Gates: a pod on the terminal's apron face and a retracted jet bridge reaching towards the apron, every 60 m.
+  // The gate at the player's stand is left out: the player's own, working bridge stands there.
+  const standAlong = -0.22 * lay.apron.length
+  const gates = (from: number, to: number) => {
+    for (let k = from; k <= to; k++) {
+      const along = standAlong + k * 60
+      if (k === 0) continue
+      put({ kind: 'gate', along, off: 20.5, width: 11, depth: 17, height: 9.6, color: GLASS })
+      put({ kind: 'bridge', along, off: 8, width: 12, depth: 2.9, height: 2.7, base: 4.1, color: TERMINAL })
+    }
+  }
   switch (a.class) {
     case 'international': {
-      put({ kind: 'terminal', along: 0, off: 26 + 22.5, width: 45, depth: 320, height: 14, color: TERMINAL })
-      for (let i = 0; i < 6; i++) {
-        put({ kind: 'gate', along: -125 + i * 50, off: 18, width: 16, depth: 8, height: 6, color: GLASS })
-      }
-      towerAt(Math.min(apronHalf + 50, 450), 60, 38, 9)
+      // A long terminal with a glass face, two piers at its ends, and eleven gates.
+      put({ kind: 'terminal', along: standAlong + 180, off: 26 + 30, width: 60, depth: 700, height: 16, color: TERMINAL })
+      put({ kind: 'terminal', along: standAlong + 180, off: 26 + 30 + 52, width: 40, depth: 560, height: 11, color: CONCRETE })
       for (const s of [-1, 1]) {
-        put({ kind: 'hangar', along: s * 340, off: 20 + 27.5, width: 55, depth: 70, height: 14, shape: 'gable', ridge: 4, color: HANGAR })
+        put({ kind: 'terminal', along: standAlong + 180 + s * 400, off: 26 + 16, width: 32, depth: 60, height: 12, color: TERMINAL })
+      }
+      gates(-2, 8)
+      towerAt(Math.min(apronHalf + 50, 700), 60, 44, 9)
+      for (const s of [-1, 1]) {
+        put({ kind: 'hangar', along: s * 560, off: 20 + 27.5, width: 55, depth: 90, height: 14, shape: 'gable', ridge: 4, color: HANGAR })
       }
       break
     }
     case 'regional': {
-      put({ kind: 'terminal', along: 0, off: 20 + 15, width: 30, depth: 90, height: 9, color: TERMINAL })
-      towerAt(80, 45, 18, 6)
-      put({ kind: 'hangar', along: -150, off: 20 + 20, width: 40, depth: 50, height: 10, shape: 'gable', ridge: 3, color: HANGAR })
+      put({ kind: 'terminal', along: standAlong + 60, off: 26 + 18, width: 36, depth: 300, height: 10, color: TERMINAL })
+      gates(-1, 3)
+      towerAt(standAlong + 260, 45, 20, 6)
+      put({ kind: 'hangar', along: standAlong - 260, off: 20 + 20, width: 40, depth: 60, height: 10, shape: 'gable', ridge: 3, color: HANGAR })
       break
     }
     case 'short': {

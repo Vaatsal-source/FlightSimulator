@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { DirectionalLight, Object3D } from 'three'
 import type { AircraftRenderState } from '../../simulation/types'
 import type { QualityProfile } from '../../config/quality'
-import type { TimeOfDay } from '../types'
+import type { TimeOfDay, Weather } from '../types'
 import { environmentFor } from './constants'
 
 const SHADOW_EXTENT = 170 // half-size of the shadow frustum (~340 m)
@@ -14,6 +14,7 @@ interface LightingProps {
   renderState: AircraftRenderState
   profile: QualityProfile
   timeOfDay: TimeOfDay
+  weather?: Weather
 }
 
 /**
@@ -21,8 +22,8 @@ interface LightingProps {
  * follows the aircraft (about 300 m of coverage). Remounted per quality (via
  * key) so the shadow map is rebuilt and the old one disposed.
  */
-export function Lighting({ renderState, profile, timeOfDay }: LightingProps) {
-  const look = environmentFor(timeOfDay)
+export function Lighting({ renderState, profile, timeOfDay, weather = 'clear' }: LightingProps) {
+  const look = environmentFor(timeOfDay, weather)
 
   const { light, target } = useMemo(() => {
     const l = new DirectionalLight(0xffffff, 1)

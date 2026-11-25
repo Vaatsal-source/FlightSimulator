@@ -105,14 +105,18 @@ describe('main menu', () => {
 
 describe('mode select', () => {
   it('starts the chosen mode and shows best score', () => {
-    reset({ screen: 'modeSelect', bestScores: { landing: 640 } })
+    reset({ screen: 'modeSelect', bestScores: { rings: 640 } })
     render(<GameUI />)
-    expect(screen.getByText('Landing Challenge')).toBeTruthy()
+    expect(screen.getByText('Gate Departure')).toBeTruthy()
+    expect(screen.getByText('Gate Arrival')).toBeTruthy()
+    // Take-off and landing challenges are no longer offered.
+    expect(screen.queryByText('Landing Challenge')).toBeNull()
+    expect(screen.queryByText('Take-off Challenge')).toBeNull()
     expect(screen.getByText('Best 640')).toBeTruthy()
     expect(screen.getAllByText(/^Best /)).toHaveLength(1)
-    fireEvent.click(within(screen.getByRole('article', { name: 'Landing Challenge' })).getByRole('button', { name: /Start/ }))
+    fireEvent.click(within(screen.getByRole('article', { name: 'Gate Departure' })).getByRole('button', { name: /Start/ }))
     expect(state().screen).toBe('flight')
-    expect(state().mode).toBe('landing')
+    expect(state().mode).toBe('gate')
   })
 
   it('Back returns to main menu', () => {

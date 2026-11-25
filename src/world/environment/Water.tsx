@@ -11,7 +11,7 @@ import {
   Vector3,
 } from 'three'
 import type { QualityProfile } from '../../config/quality'
-import type { TimeOfDay } from '../types'
+import type { TimeOfDay, Weather } from '../types'
 import { displayColor, environmentFor } from './constants'
 import { snapWaterCenter } from './envMath'
 
@@ -105,7 +105,7 @@ void main() {
  * standard material. Terrain under the sea is negative, so the shore is
  * resolved by the logarithmic depth buffer.
  */
-export function Water({ profile, timeOfDay }: { profile: QualityProfile; timeOfDay: TimeOfDay }) {
+export function Water({ profile, timeOfDay, weather = 'clear' }: { profile: QualityProfile; timeOfDay: TimeOfDay; weather?: Weather }) {
   const ref = useRef<Mesh>(null)
   const camera = useThree((s) => s.camera)
   const animated = profile.waterDetail === 'animated'
@@ -143,7 +143,7 @@ export function Water({ profile, timeOfDay }: { profile: QualityProfile; timeOfD
   }, [animated])
 
   useEffect(() => {
-    const look = environmentFor(timeOfDay)
+    const look = environmentFor(timeOfDay, weather)
     if (material instanceof ShaderMaterial) {
       const u = material.uniforms
       u.uSunDir.value.copy(look.sunDirection)
@@ -156,7 +156,7 @@ export function Water({ profile, timeOfDay }: { profile: QualityProfile; timeOfD
     } else {
       material.color.set(look.waterDeep).lerp(new Color(look.waterShallow), 0.35).multiplyScalar(look.waterLight)
     }
-  }, [material, timeOfDay])
+  }, [material, timeOfDay, weather])
 
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => material.dispose(), [material])

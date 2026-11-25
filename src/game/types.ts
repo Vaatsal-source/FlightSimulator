@@ -1,6 +1,6 @@
 import type { Vec3 } from '../simulation/types'
 
-export type GameMode = 'freeFlight' | 'gate' | 'takeoff' | 'landing' | 'rings' | 'lessonTakeoff' | 'lessonLanding' | 'lessonCircuit'
+export type GameMode = 'freeFlight' | 'gate' | 'arrival' | 'takeoff' | 'landing' | 'rings' | 'lessonTakeoff' | 'lessonLanding' | 'lessonCircuit'
 
 /** Flight School lessons (guided, assists on). */
 export const LESSON_MODES: readonly GameMode[] = ['lessonTakeoff', 'lessonLanding', 'lessonCircuit']

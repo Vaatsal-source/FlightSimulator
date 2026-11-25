@@ -67,7 +67,8 @@ export function spawnFor(mode: GameMode, place: FlightPlace, aircraftId: Aircraf
     if (!jet) return SPAWNS.rings
     return { ...SPAWNS.rings, airspeed: Math.max(ac.speeds.approach * 1.6, 100), throttle: 0.6, gearUp: true }
   }
-  if (mode === 'gate') return gateStandSpawn(place, ac.takeoffFlaps)
+  if (mode === 'arrival') return spawnFor('landing', place, aircraftId)
+  if (mode === 'gate') return gateStandSpawn(place, aircraftId)
   const end = getRunwayEnd(place.airportId, place.runwayEnd)
   const d = headingVector(end.headingDeg)
   if (mode === 'landing') {

@@ -13,7 +13,7 @@ import {
   UniformsUtils,
 } from 'three'
 import type { QualityProfile } from '../../config/quality'
-import type { TimeOfDay } from '../types'
+import type { TimeOfDay, Weather } from '../types'
 import { environmentFor } from './constants'
 import { generateClouds, puffLight, type CloudSpec } from './envMath'
 
@@ -118,9 +118,9 @@ interface Cell {
  * instanced mesh each), so the frustum culls cells off-screen and cells beyond
  * the fog distance are hidden.
  */
-export function Clouds({ profile, timeOfDay }: { profile: QualityProfile; timeOfDay: TimeOfDay }) {
+export function Clouds({ profile, timeOfDay, weather = 'clear' }: { profile: QualityProfile; timeOfDay: TimeOfDay; weather?: Weather }) {
   const camera = useThree((s) => s.camera)
-  const count = profile.cloudCount
+  const count = Math.round(profile.cloudCount * environmentFor(timeOfDay, weather).cloudScale)
   const cullDistance = profile.fogFar * 1.05
 
   const resources = useMemo(() => {
@@ -160,7 +160,7 @@ export function Clouds({ profile, timeOfDay }: { profile: QualityProfile; timeOf
 
   // Placement and lighting depend on the sun, so they are redone per time of day.
   useEffect(() => {
-    const look = environmentFor(timeOfDay)
+    const look = environmentFor(timeOfDay, weather)
     const u = resources.material.uniforms
     u.uLit.value.set(look.cloudColor)
     u.uShade.value.set(look.cloudShade)
@@ -199,7 +199,7 @@ export function Clouds({ profile, timeOfDay }: { profile: QualityProfile; timeOf
       mesh.instanceMatrix.needsUpdate = true
       mesh.computeBoundingSphere()
     }
-  }, [resources, timeOfDay])
+  }, [resources, timeOfDay, weather])
 
   useEffect(
     () => () => {

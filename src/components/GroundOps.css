@@ -14,7 +14,10 @@
   line-height: 1.35;
   pointer-events: none;
   z-index: 5;
+  max-height: calc(100vh - 290px);
+  overflow-y: auto;
 }
+.ground-ops.interactive { pointer-events: auto; }
 .go-head {
   display: flex;
   justify-content: space-between;
@@ -92,3 +95,29 @@
 @media (max-width: 640px) {
   .ground-ops { top: auto; bottom: 8px; }
 }
+
+.go-turn { margin: 0 0 8px; padding: 8px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); }
+.go-turn h3 { margin: 0 0 6px; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+.go-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 3px 0; }
+.go-line b { color: var(--hud); font-weight: 600; }
+.go-turn button {
+  min-width: 74px;
+  padding: 3px 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.go-turn button:hover:not(:disabled) { border-color: var(--accent); background: rgba(255, 255, 255, 0.14); }
+.go-turn button:disabled { opacity: 0.45; cursor: default; }
+.go-turn button.on { background: var(--accent-strong); border-color: var(--accent); color: #04121d; font-weight: 700; }
+.go-slide { display: block; margin: 0 0 4px; font-size: 0.72rem; color: var(--text-dim); }
+.go-slide input { display: block; width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
+.go-sheet { margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--panel-border); display: grid; gap: 2px; }
+.go-sheet div { display: flex; justify-content: space-between; gap: 8px; }
+.go-sheet dt { color: var(--text-dim); }
+.go-sheet dd { margin: 0; font-weight: 600; }
+.go-sheet .bad { color: #ff7b6b; }
+.go-notice { margin: 6px 0 0; padding: 3px 7px; border-radius: 5px; background: rgba(255, 181, 46, 0.16); color: #ffc766; }

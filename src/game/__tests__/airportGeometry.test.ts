@@ -47,7 +47,7 @@ describe('runway geometry', () => {
       expect(ends.length, a.id).toBeGreaterThanOrEqual(4)
       expect(new Set(ends).size, a.id).toBe(ends.length)
     }
-    expect(runwayEnds(getAirport('harbor')).map((e) => e.designator)).toEqual(['09R', '27L', '09L', '27R'])
+    expect(runwayEnds(getAirport('harbor')).map((e) => e.designator)).toEqual(['09R', '27L', '09C', '27C', '09L', '27R'])
     expect(runwayEnds(getAirport('central')).map((e) => e.designator)).toEqual(['36', '18', '09', '27'])
     // Secondary runways are parallel to the primary or cross it at 90 degrees.
     for (const a of AIRPORTS) {

@@ -12,7 +12,7 @@ import { HOME_AIRPORT_ID, getAirport } from '../config/airports'
 import { getRunwayEnd, runwayEnds } from '../game/airportGeometry'
 import { GAME_MODES } from '../game/modes'
 import { CAMERA_MODES, type CameraMode, type FlightResult, type GameMode } from '../game/types'
-import { TIMES_OF_DAY, type TimeOfDay } from '../world/types'
+import { TIMES_OF_DAY, WEATHERS, type TimeOfDay, type Weather } from '../world/types'
 
 export type Screen = 'mainMenu' | 'modeSelect' | 'flightSchool' | 'multiplayer' | 'flight' | 'results'
 /** Modal panels that can sit on top of any screen. */
@@ -35,6 +35,7 @@ export interface Settings {
   /** Sound effects volume 0..1 (0 = muted). */
   masterVolume: number
   timeOfDay: TimeOfDay
+  weather: Weather
   /** Flight assists (tail-strike guard on the take-off roll). Always on in Flight School. */
   assists: boolean
   /** Spoken cockpit callouts ("Rotate", "50, 40, 30...", "Retard"). */
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mouseSensitivity: 1,
   masterVolume: 0.6,
   timeOfDay: 'noon',
+  weather: 'clear',
   assists: true,
   voiceCallouts: true,
 }
@@ -165,6 +167,7 @@ export function sanitizeSettings(raw: unknown): Settings {
       typeof sens === 'number' && Number.isFinite(sens) ? Math.min(3, Math.max(0.2, sens)) : d.mouseSensitivity,
     masterVolume: typeof vol === 'number' && Number.isFinite(vol) ? Math.min(1, Math.max(0, vol)) : d.masterVolume,
     timeOfDay: oneOf(r.timeOfDay, TIMES_OF_DAY, d.timeOfDay),
+    weather: oneOf(r.weather, WEATHERS, d.weather),
     assists: bool(r.assists, d.assists),
     voiceCallouts: bool(r.voiceCallouts, d.voiceCallouts),
   }
