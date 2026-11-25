@@ -366,10 +366,12 @@ function buildBuildings(a: AirportDef, out: BuildingPlacement[]): void {
       break
     }
     case 'regional': {
-      put({ kind: 'terminal', along: standAlong + 1 * GATE_PITCH, off: 26 + 18, width: 36, depth: 5 * GATE_PITCH, height: 10, color: TERMINAL })
+      // The same style as the big fields, smaller: a glass terminal, a second concourse, five gates, one finger pier.
+      put({ kind: 'terminal', along: standAlong + 1 * GATE_PITCH, off: 26 + 22, width: 44, depth: 5 * GATE_PITCH, height: 15, color: TERMINAL })
+      put({ kind: 'terminal', along: standAlong + 1 * GATE_PITCH, off: 26 + 22 + 40, width: 28, depth: 4 * GATE_PITCH, height: 11, color: CONCRETE })
       gates(-1, 3)
-      towerAt(standAlong + 260, 45, 20, 6)
-      put({ kind: 'hangar', along: standAlong - 260, off: 20 + 20, width: 40, depth: 60, height: 10, shape: 'gable', ridge: 3, color: HANGAR })
+      towerAt(standAlong + 340, 55, 32, 7)
+      put({ kind: 'hangar', along: standAlong - 340, off: 20 + 24, width: 44, depth: 70, height: 12, shape: 'gable', ridge: 3.5, color: HANGAR })
       break
     }
     case 'short': {

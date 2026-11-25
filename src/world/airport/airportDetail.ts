@@ -13,7 +13,7 @@ import { mulberry32 } from '../util/random'
 import type { BuildingPlacement, LightPlacement, Rgb } from './plan'
 
 /** Distance between gates along the apron (m). */
-export const GATE_PITCH = 75
+export const GATE_PITCH = 90
 
 export interface DetailBox {
   cx: number
@@ -71,6 +71,12 @@ const YELLOW: Rgb = [0.92, 0.76, 0.1]
 const WHITE: Rgb = [0.92, 0.92, 0.9]
 const DARK: Rgb = [0.12, 0.13, 0.15]
 const TANK: Rgb = [0.88, 0.88, 0.85]
+const SKYLIGHT: Rgb = [0.3, 0.52, 0.8]
+const SOLAR: Rgb = [0.1, 0.16, 0.3]
+const PIER: Rgb = [0.84, 0.86, 0.9]
+const LAWN: Rgb = [0.26, 0.44, 0.2]
+const LEAF: Rgb = [0.17, 0.36, 0.17]
+const BARK: Rgb = [0.3, 0.22, 0.14]
 const CAR_COLOURS = [0xc0c4c8, 0x202428, 0x7a1f1f, 0x1f3a6a, 0xe6e6e0, 0x4a4f55, 0x2d5a3a, 0xb8860b]
 
 export function buildAirportDetail(a: AirportDef, buildings: readonly BuildingPlacement[]): AirportDetail {
@@ -127,7 +133,65 @@ export function buildAirportDetail(a: AirportDef, buildings: readonly BuildingPl
         if (rnd() < 0.62) out.props.push({ kind: 'car', x: xBack + 90 - 28 + row * 7.6 + (row % 2) * 0.6, z, rotY: 0, tint: CAR_COLOURS[Math.floor(rnd() * CAR_COLOURS.length)] })
       }
     }
-    // Pods' stand-side apron furniture: stand markings and floodlights are added below.
+    // ---- Rooftop: blue skylight bands, solar panels, plant, stair cores and aerials ----
+    const roofY = t.height + 0.8
+    for (let i = 0; i < 4; i++) {
+      const z = t.z - t.depth * 0.36 + i * t.depth * 0.24
+      box(t.x + t.width * 0.02, z, t.width * 0.5, 14, roofY, 0.6, SKYLIGHT)
+      box(t.x + t.width * 0.02, z, t.width * 0.5 + 1.2, 15.2, roofY - 0.05, 0.25, FRAME)
+    }
+    for (let z = t.z - t.depth / 2 + 24; z < t.z + t.depth / 2 - 30; z += 11) {
+      if (rnd() < 0.3) continue
+      for (let c = 0; c < 3; c++) box(t.x + t.width * 0.3 + c * 3.4, z, 3, 8, roofY, 0.35, SOLAR)
+    }
+    for (const sz of [-1, 1]) {
+      box(t.x, t.z + sz * (t.depth / 2 - 14), 9, 9, roofY, 4.2, FRAME) // stair and lift cores
+      box(t.x, t.z + sz * (t.depth / 2 - 14), 9.6, 9.6, roofY + 4.2, 0.4, ROOF)
+    }
+    for (let z = t.z - t.depth / 2 + 40; z < t.z + t.depth / 2 - 30; z += 70 + rnd() * 30) {
+      out.cylinders.push({ cx: t.x - t.width * 0.3, cz: z, r: 2.4, y0: roofY, h: 1.8, color: [0.8, 0.82, 0.84] }) // chillers
+      box(t.x - t.width * 0.3 + 6, z, 0.35, 0.35, roofY, 9, ROOF) // aerial
+    }
+    // Facade sign band, a canopy over the entrance and light columns on the landside.
+    box(xFace - 1.2, t.z, 1.6, Math.min(t.depth * 0.5, 240), top - 2.4, 2, [0.14, 0.24, 0.5])
+    // ---- Landscaping on the landside: lawns, trees, a second road and a footpath ----
+    const lawnZ = t.z - t.depth / 2 - 6
+    box(xBack + 52, t.z + t.depth * 0.46, 40, 120, 0.02, 0.04, LAWN)
+    box(xBack + 52, t.z - t.depth * 0.5, 40, 100, 0.02, 0.04, LAWN)
+    box(xBack + 18, lawnZ - 30, 36, 50, 0.02, 0.04, LAWN)
+    for (let i = 0; i < 26; i++) {
+      const tz = t.z - t.depth * 0.5 + i * (t.depth / 25)
+      for (const tx of [xBack + 42, xBack + 66]) {
+        if (rnd() < 0.25) continue
+        out.cylinders.push({ cx: tx, cz: tz + rnd() * 3, r: 0.35, y0: 0, h: 2.6, color: BARK })
+        out.cylinders.push({ cx: tx, cz: tz, r: 2.2 + rnd() * 1.2, y0: 2.2, h: 4 + rnd() * 2, color: LEAF })
+      }
+    }
+    for (let z = t.z - t.depth / 2; z <= t.z + t.depth / 2; z += 28) {
+      box(xBack + 24.5, z, 0.3, 0.3, 0, 7, ROOF)
+      box(xBack + 24.5, z, 1.4, 0.4, 7, 0.25, DARK)
+      out.lights.push({ x: xBack + 24.5, y: 7.1, z, color: 'white' })
+    }
+    // ---- Finger piers: covered walkways reaching out between the stands to a lounge at the tip ----
+    const piers = a.class === 'international' ? [-1.5, 2.5, 6.5] : a.class === 'regional' ? [1.5] : []
+    const xTip = apronFar - 22
+    for (const pk of piers) {
+      const zc = -(standAlong + pk * GATE_PITCH)
+      const len = xFace - xTip
+      const mid = (xTip + xFace) / 2
+      box(mid, zc, len, 10, 0, 8, PIER)
+      for (const s of [-1, 1]) box(mid, zc + s * 5.05, len - 6, 0.25, 1.3, 4.6, GLASS)
+      box(mid, zc, len + 1, 11, 8, 0.6, FRAME)
+      box(mid, zc, len - 8, 4, 8.6, 0.5, SKYLIGHT)
+      box(xTip + 3, zc, 17, 17, 0, 9.4, PIER) // lounge at the tip
+      for (const s of [-1, 1]) box(xTip + 3, zc + s * 8.6, 15, 0.25, 1.3, 5.6, GLASS)
+      box(xTip - 5.2, zc, 0.25, 15, 1.3, 5.6, GLASS)
+      box(xTip + 3, zc, 18, 18, 9.4, 0.7, FRAME)
+      box(xTip + 3, zc, 9, 9, 10.1, 0.5, SKYLIGHT)
+      for (let x = xTip + 14; x < xFace - 6; x += 12) box(x, zc, 3.2, 3.6, 8.6, 1.4, ROOF) // plant on the walkway roof
+      // The pier's own lights and stand-side markings.
+      box(xTip - 6, zc, 0.5, 10, 0.07, 0.03, YELLOW)
+    }
   }
 
   // ---- Tower, hangars ---------------------------------------------------------
@@ -138,10 +202,14 @@ export function buildAirportDetail(a: AirportDef, buildings: readonly BuildingPl
       box(b.x, b.z, 1.4, 1.4, b.base + b.height + 15.7, 0.9, [0.9, 0.2, 0.15])
       out.lights.push({ x: b.x, y: b.base + b.height + 16.7, z: b.z, color: 'red' })
       box(b.x, b.z, b.width + 0.5, b.depth + 0.5, b.base + 0.8, 0.5, FRAME)
+      out.cylinders.push({ cx: b.x + 2.2, cz: b.z, r: 1.3, y0: b.base + b.height + 0.7, h: 1.6, color: WHITE }) // radar dome
+      box(b.x, b.z, b.width + 1.2, 0.3, b.base + b.height * 0.4, 0.3, [0.9, 0.2, 0.15]) // marking band
     }
     if (b.kind === 'hangar') {
       // A big door on the apron face and a row of roof lights.
       box(b.x - b.width / 2 - 0.1, b.z, 0.4, b.depth * 0.72, 0, Math.min(b.height - 1, 9), DARK)
+      for (let z = b.z - b.depth * 0.3; z <= b.z + b.depth * 0.3 + 0.01; z += b.depth * 0.3) box(b.x, z, b.width * 0.5, 2.4, b.height + 3.5, 0.4, SKYLIGHT) // roof lights
+      box(b.x - b.width / 2 - 0.6, b.z, 0.8, b.depth * 0.9, b.height - 1.6, 1.2, [0.7, 0.2, 0.15]) // stripe over the door
       for (let z = b.z - b.depth * 0.36; z <= b.z + b.depth * 0.36 + 0.01; z += b.depth * 0.18) box(b.x - b.width / 2 - 0.15, z, 0.4, 0.5, 0, Math.min(b.height - 1, 9), FRAME)
     }
   }
@@ -158,6 +226,12 @@ export function buildAirportDetail(a: AirportDef, buildings: readonly BuildingPl
     }
     box(farmX + 12, farmZ + 12, 62, 62, 0.01, 0.2, [0.4, 0.4, 0.38]) // bund
     out.props.push({ kind: 'fuelTruck', x: farmX + 44, z: farmZ + 6, rotY: Math.PI / 2 }, { kind: 'fireTruck', x: apronFar + 95, z: -(ap.along + 40), rotY: 0 })
+  }
+  if (a.class === 'regional') {
+    const cz = -(ap.along + lay.apron.length / 2 + 80)
+    box(apronFar + 70, cz, 36, 70, 0, 9, [0.62, 0.64, 0.67])
+    box(apronFar + 70, cz, 37, 71, 9, 0.6, FRAME)
+    for (let i = 0; i < 3; i++) box(apronFar + 51.8, cz - 20 + i * 20, 0.4, 8, 0, 3.6, DARK)
   }
   if (a.class === 'international') {
     const cz = -(ap.along + lay.apron.length / 2 + 120)

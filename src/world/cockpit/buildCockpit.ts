@@ -230,12 +230,35 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     mesh(parent, new PlaneGeometry(meters.w, meters.h), s.material, p, r)
   }
 
+  const LEGENDS = ['APU', 'FUEL', 'HYD', 'ELEC', 'AIR', 'PACK', 'BLEED', 'ENG', 'FIRE', 'A-ICE', 'LDG', 'STROBE', 'NAV', 'SEAT', 'WIPER', 'CABIN', 'EMER', 'ADIRS', 'FLT CTL', 'CVR', 'RADIO', 'TRIM', 'GEN', 'PUMP']
+  /** A glossy reflection over a screen: a soft diagonal sheen on a transparent plane. */
+  const sheenTexture = ((): CanvasTexture => {
+    const c = document.createElement('canvas')
+    c.width = 128
+    c.height = 128
+    const g = c.getContext('2d')
+    if (g) {
+      const grad = g.createLinearGradient(0, 0, 128, 128)
+      grad.addColorStop(0, 'rgba(255,255,255,0.20)')
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.05)')
+      grad.addColorStop(0.55, 'rgba(255,255,255,0)')
+      grad.addColorStop(1, 'rgba(255,255,255,0.07)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, 128, 128)
+    }
+    return track(new CanvasTexture(c))
+  })()
+  const sheenMat = track(new MeshBasicMaterial({ map: sheenTexture, transparent: true, depthWrite: false, toneMapped: false, fog: false }))
+  const sheen = (parent: Object3D, w: number, h: number, p: Vec, r: Vec = [0, 0, 0]): void => {
+    const m = mesh(parent, new PlaneGeometry(w, h), sheenMat, p, r)
+    m.renderOrder = 6
+  }
   /** A quiet static panel of switches, knobs and a few indicator lights, drawn once. */
   const switchPanel = (cols: number, rows: number, seed: number, lit: boolean, aspect = 2): MeshBasicMaterial => {
     const canvas = document.createElement('canvas')
     // Match the plane's proportions so the cells are not stretched.
-    const W = Math.max(64, Math.round(aspect >= 1 ? 512 : 512 * aspect))
-    const H = Math.max(64, Math.round(aspect >= 1 ? 512 / aspect : 512))
+    const W = Math.max(64, Math.round(aspect >= 1 ? 1024 : 1024 * aspect))
+    const H = Math.max(64, Math.round(aspect >= 1 ? 1024 / aspect : 1024))
     canvas.width = W
     canvas.height = H
     const ctx = canvas.getContext('2d')
@@ -257,6 +280,11 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
           ctx.fillRect(x - cw * 0.4, y - rh * 0.4, cw * 0.8, rh * 0.8)
           ctx.fillStyle = '#2b2f38'
           ctx.fillRect(x - cw * 0.4, y - rh * 0.4, cw * 0.8, Math.max(1, rh * 0.06))
+          // A legend under the control, as engraved on a real panel.
+          ctx.fillStyle = '#9aa3b2'
+          ctx.font = `${Math.max(7, Math.round(m * 0.19))}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText(LEGENDS[Math.floor(rnd() * LEGENDS.length)], x, y + rh * 0.36, cw * 0.78)
           if (k < 0.4) {
             ctx.fillStyle = '#4b515d'
             ctx.fillRect(x - m * 0.07, y - m * 0.2, m * 0.14, m * 0.34)
@@ -275,9 +303,23 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
           }
         }
       }
+      // Section frames around groups of controls, with a coloured corner tab on some.
+      ctx.lineWidth = Math.max(1, W / 400)
+      const gw = cw * Math.max(2, Math.min(cols, 4))
+      const gh = rh * Math.max(2, Math.min(rows, 3))
+      for (let gy = 0; gy < H - 1; gy += gh) {
+        for (let gx = 0; gx < W - 1; gx += gw) {
+          ctx.strokeStyle = '#3b4252'
+          ctx.strokeRect(gx + 2, gy + 2, gw - 4, gh - 4)
+          const tab = rnd()
+          ctx.fillStyle = tab < 0.2 ? '#d8b020' : tab < 0.35 ? '#c23a2e' : tab < 0.5 ? '#3a6ab5' : '#2a2f3a'
+          ctx.fillRect(gx + 2, gy + 2, gw * 0.18, Math.max(2, gh * 0.03))
+        }
+      }
     }
     const texture = track(new CanvasTexture(canvas))
     texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 4
     return track(new MeshBasicMaterial({ map: texture, toneMapped: false, fog: false, color: 0xd8d8d8 }))
   }
   /** A textured plane of switches, e.g. a panel face or a console top. */
@@ -400,6 +442,7 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     box(root, 1.24, 0.035, 0.4, glareMat, [cx, -0.185, -1.0])
     bezel(root, 0.48, 0.32, [0, -0.375, -0.768])
     addScreen(root, TEXTURE_SIZE.gauges, { w: 0.48, h: 0.32 }, [0, -0.375, -0.768], drawSixPack)
+    sheen(root, 0.48, 0.32, [0, -0.375, -0.7665])
     detail(root, 0.58, 0.3, [cx + 0.33, -0.375, -0.7695], [0, 0, 0], 12, 6, 11, true) // avionics stack
     detail(root, 0.16, 0.3, [-0.27, -0.375, -0.7695], [0, 0, 0], 4, 6, 4)
     seat(0, -0.15, 0.05)
@@ -424,6 +467,13 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     const pfd = addScreen(panel, TEXTURE_SIZE.pfd, { w: 0.37, h: 0.37 }, [-cx, 0.1, 0.045], drawPfd)
     mirrorScreen(panel, pfd, { w: 0.37, h: 0.37 }, [cx, 0.1, 0.045])
     addScreen(panel, TEXTURE_SIZE.eicas, { w: 0.34, h: 0.17 }, [0, 0.18, 0.045], drawEicas)
+    sheen(panel, 0.37, 0.37, [-cx, 0.1, 0.0462])
+    sheen(panel, 0.37, 0.37, [cx, 0.1, 0.0462])
+    sheen(panel, 0.34, 0.17, [0, 0.18, 0.0462])
+    // Standby attitude indicator under the displays, with its own bezel, and gear and brake lights.
+    bezel(panel, 0.13, 0.13, [0, -0.215, 0.045])
+    mirrorScreen(panel, pfd, { w: 0.13, h: 0.13 }, [0, -0.215, 0.0455])
+    for (let i = 0; i < 3; i++) box(panel, 0.03, 0.03, 0.006, i === 1 ? amber : green, [-0.1 + i * 0.1, -0.31, 0.044])
     box(panel, 0.37, 0.2, 0.004, trim, [0, -0.01, 0.0425]) // frame of the lower display
     box(panel, 0.34, 0.17, 0.004, glareMat, [0, -0.01, 0.0452]) // the display itself, off
     // Slim glare-shield with the autopilot control strip on it.
@@ -541,6 +591,13 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     for (const sx of [-1, 1]) bar([cx + sx * 1.03, 0.4, 0.9], [cx + sx * 1.03, 0.4, 1.6], 0.025, 0.025, brushed)
     box(root, 0.05, 0.12, 0.05, brushed, [cx, 0.5, -0.74])
     knob(root, [cx, 0.52, -0.78], 0.035, glareMat)
+    // Wipers parked at the foot of the windscreen, and a clock on the panel's rim.
+    for (const wx of [-0.45, 0.45]) bar([cx + wx - 0.17, -0.085, -1.12], [cx + wx + 0.17, -0.04, -1.1], 0.016, 0.01, rubber)
+    // Oxygen masks in their boxes, a fire extinguisher and a first-aid kit behind the seats.
+    for (const x of [0, cx * 2]) box(root, 0.12, 0.1, 0.08, white, [x + (x === 0 ? -0.62 : 0.62), -0.1, 0.78])
+    knob(root, [cx + 0.9, -0.85, 1.7], 0.07, knobRed)
+    box(root, 0.18, 0.12, 0.1, white, [cx - 0.9, -0.5, 1.82])
+    box(root, 0.06, 0.04, 0.01, red, [cx - 0.9, -0.5, 1.765])
     // Window rubber seals just inside the frames.
     for (const sx of [-1, 1]) {
       box(root, 0.02, 0.04, 1.0, rubber, [cx + sx * 1.065, -0.075, 0.1])

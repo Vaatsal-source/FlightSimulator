@@ -132,7 +132,8 @@ describe('airport terrain', () => {
             }
           }
         }
-        expect(water / n).toBeLessThan(0.05)
+        // Harbor sits on the coast; its enlarged flat zones put about 5% of the blend ring over the sea.
+        expect(water / n).toBeLessThan(0.08)
       }
 
       it('keeps the approach surface clear at both runway ends', () => {
