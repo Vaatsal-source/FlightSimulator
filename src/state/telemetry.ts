@@ -155,10 +155,36 @@ function deepFreeze<T extends object>(obj: T): T {
 let current: TelemetrySnapshot = INITIAL_TELEMETRY
 const listeners = new Set<() => void>()
 
+/**
+ * The HUD, panels and maps re-render from a copy that changes at most 10 times a second: rebuilding
+ * their element trees 30 times a second was a large share of the per-frame allocation (and so of the
+ * garbage-collection hitches). Code that needs every snapshot (getTelemetry/subscribeTelemetry) is unaffected.
+ */
+const DOM_INTERVAL_MS = import.meta.env?.MODE === 'test' ? 0 : 100
+let domSnapshot: TelemetrySnapshot = INITIAL_TELEMETRY
+let domLast = -Infinity
+let domTimer: ReturnType<typeof setTimeout> | null = null
+const domListeners = new Set<() => void>()
+
+function flushDom(): void {
+  domTimer = null
+  domLast = Date.now()
+  domSnapshot = current
+  domListeners.forEach((l) => l())
+}
+
 /** Replace the snapshot. Pass a NEW object each time; never mutate a published one. */
 export function publishTelemetry(next: TelemetrySnapshot): void {
   current = next
   listeners.forEach((listener) => listener())
+  if (DOM_INTERVAL_MS === 0 || next === INITIAL_TELEMETRY) {
+    if (domTimer !== null) clearTimeout(domTimer)
+    flushDom()
+  } else if (domTimer === null) {
+    const wait = Math.max(0, DOM_INTERVAL_MS - (Date.now() - domLast))
+    if (wait === 0) flushDom()
+    else domTimer = setTimeout(flushDom, wait)
+  }
 }
 
 export function getTelemetry(): TelemetrySnapshot {
@@ -172,11 +198,22 @@ export function subscribeTelemetry(listener: () => void): () => void {
   }
 }
 
+function subscribeDom(listener: () => void): () => void {
+  domListeners.add(listener)
+  return () => {
+    domListeners.delete(listener)
+  }
+}
+
+function getDomSnapshot(): TelemetrySnapshot {
+  return domSnapshot
+}
+
 export function resetTelemetry(): void {
   publishTelemetry(INITIAL_TELEMETRY)
 }
 
-/** Re-renders the caller whenever a new snapshot is published (~30 Hz). */
+/** Re-renders the caller when the UI copy of the snapshot changes (about 10 Hz). */
 export function useTelemetry(): TelemetrySnapshot {
-  return useSyncExternalStore(subscribeTelemetry, getTelemetry, getTelemetry)
+  return useSyncExternalStore(subscribeDom, getDomSnapshot, getDomSnapshot)
 }

@@ -8,6 +8,9 @@ import { inMultiplayer, sendRespawn, useMultiplayerStore } from '../state/multip
 import { FlightWorld } from '../world/FlightWorld'
 import { getTerrainSampler } from '../world/terrain/terrainSampler'
 import { FlightSession } from './FlightSession'
+import { AdaptiveResolution } from './AdaptiveResolution'
+import { isSoftwareRenderer } from './gpuInfo'
+import { setPerfScale } from './perfStats'
 import { PerfOverlay, PerfProbe } from './PerfOverlay'
 import { SimulationDriver } from './SimulationDriver'
 
@@ -24,6 +27,22 @@ export function FlightCanvas() {
   const quality = useGameStore((s) => s.settings.quality)
   const invertPitch = useGameStore((s) => s.settings.invertPitch)
   const mouseSensitivity = useGameStore((s) => s.settings.mouseSensitivity)
+
+  // The most pixels per CSS pixel this display and quality level allow; the governor lowers it when frames run long.
+  const maxDpr = Math.max(1, Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, QUALITY_PROFILES[quality].maxDpr))
+  const [software, setSoftware] = useState(false)
+
+  // No GPU (software rendering): start on the lowest quality once, so the first flight is playable.
+  useEffect(() => {
+    if (!software) return
+    try {
+      if (localStorage.getItem('flysim-auto-low')) return
+      localStorage.setItem('flysim-auto-low', '1')
+    } catch {
+      // storage blocked: the governor still lowers the resolution
+    }
+    if (useGameStore.getState().settings.quality !== 'low') useGameStore.getState().updateSettings({ quality: 'low' })
+  }, [software])
 
   // One ground for physics and rendering at every quality level.
   const terrain = getTerrainSampler()
@@ -120,12 +139,19 @@ export function FlightCanvas() {
       <Canvas
         // three 0.186 removed PCFSoftShadowMap; R3F's default `shadows` would warn and fall back.
         shadows="percentage"
-        dpr={[1, QUALITY_PROFILES[quality].maxDpr]}
-        gl={{ antialias: true, logarithmicDepthBuffer: true, powerPreference: 'high-performance' }}
+        dpr={maxDpr}
+        onCreated={({ gl }) => {
+          const soft = isSoftwareRenderer(gl.getContext())
+          setPerfScale(maxDpr, soft)
+          setSoftware(soft)
+        }}
+        // MSAA is a large share of the fill cost on weak GPUs: only low quality drops it.
+        gl={{ antialias: quality !== 'low', logarithmicDepthBuffer: true, powerPreference: 'high-performance' }}
         camera={{ fov: 65, near: 0.2, far: 60000 }}
       >
         <SimulationDriver session={session} audio={audio} />
         <PerfProbe />
+        <AdaptiveResolution max={maxDpr} software={software} />
         <FlightWorld
           renderState={session.renderState}
           terrain={terrain}

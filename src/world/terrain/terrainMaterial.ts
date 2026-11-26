@@ -28,6 +28,8 @@ attribute vec2 biome;
 varying vec2 vBiome;
 varying vec3 vTerrainPos;
 varying vec3 vTerrainNormal;
+varying float vAirDist;
+uniform vec2 uAirports[AIRPORT_COUNT];
 `
 
 const VERTEX_MAIN = /* glsl */ `
@@ -35,12 +37,17 @@ vBiome = biome;
 // Chunks are only translated, so the object normal is the world normal.
 vTerrainNormal = normal;
 vTerrainPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+// Distance to the nearest airfield, per vertex (the fields fade over thousands of metres, so interpolating is exact enough).
+float airDist = 1.0e9;
+for (int i = 0; i < AIRPORT_COUNT; i++) airDist = min(airDist, distance(vTerrainPos.xz, uAirports[i]));
+vAirDist = airDist;
 `
 
 const FRAGMENT_PARS = /* glsl */ `
 varying vec2 vBiome;
 varying vec3 vTerrainPos;
 varying vec3 vTerrainNormal;
+varying float vAirDist;
 uniform vec3 uSeabedDeep;
 uniform vec3 uSeabed;
 uniform vec3 uSand;
@@ -87,8 +94,13 @@ const FRAGMENT_COLOR = /* glsl */ `
   float mid = tNoise(wp * 0.017);
   float nearFade = 1.0 - smoothstep(250.0, 1400.0, dist);
   float fineFade = 1.0 - smoothstep(25.0, 220.0, dist);
+#ifdef TERRAIN_LITE
+  float d1 = 0.5;
+  float d2 = 0.5;
+#else
   float d1 = nearFade > 0.0 ? tNoise(wp * 0.21) : 0.5;
   float d2 = fineFade > 0.0 ? tNoise(wp * 1.3) : 0.5;
+#endif
 
   // Grassland: lush / dry patches, forest floor under the woods, alpine meadow up high.
   vec3 col = mix(uGrass, uGrassLush, smoothstep(0.3, 0.8, mid));
@@ -102,8 +114,7 @@ const FRAGMENT_COLOR = /* glsl */ `
   {
     float flatLand = 1.0 - smoothstep(0.04, 0.12, slope);
     float lowland = 1.0 - smoothstep(320.0, 620.0, h);
-    float airDist = 1.0e9;
-    for (int i = 0; i < AIRPORT_COUNT; i++) airDist = min(airDist, distance(wp, uAirports[i]));
+    float airDist = vAirDist;
     float fieldW = flatLand * lowland * (1.0 - forest) * step(3.8, h)
       * (1.0 - smoothstep(7000.0, 16000.0, dist)) * smoothstep(1500.0, 3200.0, airDist);
     if (fieldW > 0.01) {
@@ -121,7 +132,11 @@ const FRAGMENT_COLOR = /* glsl */ `
                 : vec3(0.22, 0.40, 0.17);
       crop *= 0.88 + 0.24 * h2;
       // Ploughed rows, only close up.
+#ifdef TERRAIN_LITE
+      float rowFade = 0.0;
+#else
       float rowFade = 1.0 - smoothstep(300.0, 1800.0, dist);
+#endif
       float rows = sin((h2 > 0.5 ? q.x : q.y) * 1.1) * 0.5 + 0.5;
       crop *= 1.0 - 0.10 * rows * rowFade * step(0.3, h1) * (1.0 - step(0.58, h1) * step(h1, 0.62));
       // Hedgerows along the edges.
@@ -159,6 +174,7 @@ const FRAGMENT_COLOR = /* glsl */ `
   col *= 0.92 + 0.16 * macro;
   // Grass grain at every range: a speckle whose cells stay about 2-3 pixels wide, stepping up by octaves with
   // distance (like mipmaps for noise) and crossfading between steps, so it neither swims nor turns to blur.
+#ifndef TERRAIN_LITE
   {
     float px = max(dist * 0.0018 * 2.5, 0.2);
     float lv = log2(px / 0.2);
@@ -170,11 +186,13 @@ const FRAGMENT_COLOR = /* glsl */ `
     float amp = 0.34 * (1.0 - smoothstep(500.0, 3500.0, dist)) * (1.0 - 0.75 * rockiness) * (1.0 - snow * 0.6);
     col *= 1.0 + amp * speck;
   }
+#endif
   diffuseColor.rgb *= col;
 }
 `
 
 const FRAGMENT_NORMAL = /* glsl */ `
+#ifndef TERRAIN_LITE
 // Fine relief: a tilt of the normal from the detail noise, so the ground catches low sun instead of reading flat.
 {
   float bf = 1.0 - smoothstep(40.0, 900.0, length(vTerrainPos - cameraPosition));
@@ -193,10 +211,11 @@ const FRAGMENT_NORMAL = /* glsl */ `
     normal = normalize(normal + (viewMatrix * vec4(tilt2, 0.0)).xyz);
   }
 }
+#endif
 `
 
 /** Shared terrain material; dispose it when the terrain unmounts. */
-export function createTerrainMaterial(): MeshStandardMaterial {
+export function createTerrainMaterial(lite = false): MeshStandardMaterial {
   const material = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 })
   const uniforms: Record<string, { value: Color }> = {}
   for (const [name, hex] of Object.entries(PALETTE)) uniforms[name] = { value: new Color(hex) }
@@ -204,13 +223,15 @@ export function createTerrainMaterial(): MeshStandardMaterial {
     Object.assign(shader.uniforms, uniforms)
     shader.uniforms.uAirports = { value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${VERTEX_PARS}`)
+      .replace('#include <common>', `#include <common>
+#define AIRPORT_COUNT ${AIRPORTS.length}
+${VERTEX_PARS}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERTEX_MAIN}`)
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n#define AIRPORT_COUNT ${AIRPORTS.length}\n${FRAGMENT_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${FRAGMENT_COLOR}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAGMENT_NORMAL}`)
   }
-  material.customProgramCacheKey = () => 'flysim-terrain-v4'
+  material.customProgramCacheKey = () => (lite ? 'flysim-terrain-v5-lite' : 'flysim-terrain-v5')
   return material
 }

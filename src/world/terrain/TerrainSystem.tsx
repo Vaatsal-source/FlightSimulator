@@ -16,7 +16,7 @@ import { createTerrainMaterial } from './terrainMaterial'
  */
 export function TerrainSystem({ terrain, profile }: { terrain: TerrainSampler; profile: QualityProfile }) {
   const { terrainViewDistance, terrainLodBias, shadows } = profile
-  const material = useMemo(() => createTerrainMaterial(), [])
+  const material = useMemo(() => createTerrainMaterial(profile.terrainDetail === 'lite'), [profile.terrainDetail])
   const root = useRef<Group>(null)
   const streamer = useRef<TerrainStreamer | null>(null)
 

@@ -29,6 +29,8 @@ export interface QualityProfile {
   trafficCount: number
   /** 'animated' = wave shader with sun glint; 'simple' = flat tinted plane. */
   waterDetail: 'simple' | 'animated'
+  /** 'lite' = the cheaper ground shader (no close-up noise, ploughed rows or relief), for weak GPUs. */
+  terrainDetail: 'lite' | 'full'
 }
 
 export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
@@ -44,6 +46,7 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     maxDpr: 1,
     trafficCount: 2,
     waterDetail: 'simple',
+    terrainDetail: 'lite',
   },
   medium: {
     terrainViewDistance: 20000,
@@ -57,6 +60,7 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     maxDpr: 1.5,
     trafficCount: 5,
     waterDetail: 'animated',
+    terrainDetail: 'full',
   },
   high: {
     terrainViewDistance: 32000,
@@ -70,5 +74,6 @@ export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
     maxDpr: 2,
     trafficCount: 8,
     waterDetail: 'animated',
+    terrainDetail: 'full',
   },
 }

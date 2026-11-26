@@ -54,6 +54,8 @@ export interface CockpitControls {
 export interface CockpitOptions {
   /** Soft interior lighting (a prefiltered environment map). Without it the deck is lit by the scene lights only. */
   envMap?: Texture | null
+  /** Redraw the live screens at most this often (ms); 0 redraws on every new snapshot. */
+  redrawMs?: number
 }
 
 export interface Cockpit {
@@ -648,12 +650,15 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
 
   const level = (v: number): number => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0))
   let lastT: PanelState['t'] | null = null
+  let lastDraw = -Infinity
 
   return {
     root,
     update(ps, c) {
-      if (ps.t !== lastT) {
+      const now = options.redrawMs ? performance.now() : 0
+      if (ps.t !== lastT && (!options.redrawMs || now - lastDraw >= options.redrawMs)) {
         lastT = ps.t
+        lastDraw = now
         for (const s of screens) {
           if (!s.ctx) continue
           s.draw(s.ctx, s.w, s.h, ps)

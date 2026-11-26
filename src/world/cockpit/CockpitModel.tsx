@@ -30,7 +30,7 @@ export function CockpitModel({ renderState }: { renderState: AircraftRenderState
     const pmrem = new PMREMGenerator(gl)
     const room = new RoomEnvironment()
     const env = pmrem.fromScene(room, 0.04)
-    const built = buildCockpit(id, { envMap: env.texture })
+    const built = buildCockpit(id, { envMap: env.texture, redrawMs: 60 })
     setCockpit(built)
     return () => {
       built.dispose()

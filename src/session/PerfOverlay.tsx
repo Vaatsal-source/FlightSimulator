@@ -77,6 +77,7 @@ export function PerfOverlay() {
         `1% low ${snap.low1Fps.toFixed(0)} fps   worst ${snap.worstMs.toFixed(0)} ms`,
         `draws ${snap.drawCalls}   tris ${(snap.triangles / 1000).toFixed(0)}k`,
         `geom ${snap.geometries}   tex ${snap.textures}`,
+        `res ${snap.scale.toFixed(2)}x${snap.software ? '  (software rendering)' : ''}`,
         snap.heapMb !== null ? `heap ${snap.heapMb.toFixed(0)} MB` : null,
         'F3 hides',
       ]

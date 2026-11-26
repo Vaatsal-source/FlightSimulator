@@ -156,6 +156,13 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 - **Cockpit polish:** seats with bolsters, armrests and harnesses, rudder pedals, warning lights, sun visors, pedestal levers and trim wheels, overhead module frames, ceiling fittings, window seals, yoke and stick grips (all three styles).
 - **Not done / honest limits:** no ATC wind calls on arrival, no taxi conflict physics (traffic is a warning, not a collision), ground traffic does not appear in arrival mode, the new maps (real-terrain pipeline) are still only prototyped, only the player's gate has a working jet bridge, wind gusts are not applied to AI traffic. Terrain footprint tests for the enlarged airports were re-run in the background.
 
+## Performance pass 3 (F3 metrics)
+- **Adaptive resolution** (`session/resolutionGovernor.ts`, `AdaptiveResolution.tsx`): the canvas pixel ratio follows the frame time (down fast when over about 27 ms, back up slowly, remembers the level that failed). F3 shows `res`.
+- **No-GPU detection** (`gpuInfo.ts`): SwiftShader, llvmpipe and similar renderers start at a low resolution and switch the quality to Low once (`flysim-auto-low` in localStorage). Low also drops MSAA and uses the lite ground shader (`terrainDetail: 'lite'`).
+- **UI re-render cost:** the HUD and panels re-render from a copy of the telemetry at 10 Hz instead of 30 Hz (`useTelemetry`); the cockpit screens redraw at about 16 Hz. In a 12 s profile at small size, garbage collection fell from 12% to under 1% and React element creation from 19% to 3%.
+- **Terrain shader:** the nearest-airfield distance moved from every pixel (10 distance calculations) to every vertex.
+- **Measured with:** headless Chrome on the CPU rasteriser (SwiftShader), CDP CPU and heap profiles. That machine is not a GPU, so absolute frame rates there say little; counts (draws, triangles, GC share) do carry over.
+
 ## Tooling note
 - On this machine `vitest run` fails in the default pool ("Cannot read properties of undefined (reading 'config')"); use `--pool=vmThreads`.
   Under that pool the heavy terrain tests need `--testTimeout=240000`, and the sampler's 400 ms wall-clock budget can fail on a slow machine.

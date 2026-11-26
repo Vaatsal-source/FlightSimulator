@@ -18,6 +18,9 @@ export interface PerfSnapshot {
   textures: number
   /** JS heap in MB when the browser exposes it (Chromium), else null. */
   heapMb: number | null
+  /** Render resolution as a device-pixel-ratio, and whether WebGL runs on the CPU. */
+  scale: number
+  software: boolean
 }
 
 const WINDOW = 240 // frames kept for the percentile stats
@@ -29,6 +32,13 @@ let drawCalls = 0
 let triangles = 0
 let geometries = 0
 let textures = 0
+let scale = 1
+let software = false
+
+export function setPerfScale(s: number, isSoftware?: boolean): void {
+  scale = s
+  if (isSoftware !== undefined) software = isSoftware
+}
 
 export function recordFrame(deltaSeconds: number, info: { calls: number; triangles: number; geometries: number; textures: number }): void {
   frames[head] = deltaSeconds * 1000
@@ -47,7 +57,7 @@ export function resetPerf(): void {
 
 export function readPerf(): PerfSnapshot {
   if (count === 0) {
-    return { fps: 0, frameMs: 0, worstMs: 0, low1Fps: 0, drawCalls, triangles, geometries, textures, heapMb: null }
+    return { fps: 0, frameMs: 0, worstMs: 0, low1Fps: 0, drawCalls, triangles, geometries, textures, heapMb: null, scale, software }
   }
   const sample = Array.from(frames.subarray(0, count)).sort((a, b) => a - b)
   const mean = sample.reduce((a, b) => a + b, 0) / count
@@ -66,5 +76,7 @@ export function readPerf(): PerfSnapshot {
     geometries,
     textures,
     heapMb: mem ? mem.usedJSHeapSize / 1048576 : null,
+    scale,
+    software,
   }
 }
