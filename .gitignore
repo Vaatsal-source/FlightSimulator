@@ -6,3 +6,5 @@ coverage
 graphify-out
 
 .vercel
+# Original high-resolution model downloads (the web copies are built from these by scripts/)
+assets-src/

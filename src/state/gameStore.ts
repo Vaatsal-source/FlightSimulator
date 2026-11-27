@@ -39,6 +39,10 @@ export interface Settings {
   weather: Weather
   /** Strength of the wind (its direction depends on the airport). */
   wind: WindSetting
+  /** 'auto' lowers the render resolution when frames run long; 'native' always renders at full sharpness (unless there is no GPU). */
+  resolution: 'auto' | 'native'
+  /** 'on' lets the game lower the quality tier by itself when it cannot keep up at the lowest resolution. */
+  autoQuality: 'off' | 'on'
   /** Flight assists (tail-strike guard on the take-off roll). Always on in Flight School. */
   assists: boolean
   /** Spoken cockpit callouts ("Rotate", "50, 40, 30...", "Retard"). */
@@ -57,6 +61,8 @@ export const DEFAULT_SETTINGS: Settings = {
   timeOfDay: 'noon',
   weather: 'clear',
   wind: 'light',
+  resolution: 'auto',
+  autoQuality: 'off',
   assists: true,
   voiceCallouts: true,
 }
@@ -173,6 +179,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     timeOfDay: oneOf(r.timeOfDay, TIMES_OF_DAY, d.timeOfDay),
     weather: oneOf(r.weather, WEATHERS, d.weather),
     wind: oneOf(r.wind, WIND_SETTINGS, d.wind),
+    resolution: oneOf(r.resolution, ['auto', 'native'] as const, d.resolution),
+    autoQuality: oneOf(r.autoQuality, ['off', 'on'] as const, d.autoQuality),
     assists: bool(r.assists, d.assists),
     voiceCallouts: bool(r.voiceCallouts, d.voiceCallouts),
   }

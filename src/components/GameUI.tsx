@@ -289,6 +289,22 @@ function SettingsPanel() {
             onChange={(wind) => updateSettings({ wind })}
           />
         </Field>
+        <Field label="Resolution">
+          <Segmented
+            label="Resolution"
+            value={settings.resolution}
+            options={['auto', 'native'] as const}
+            onChange={(resolution) => updateSettings({ resolution })}
+          />
+        </Field>
+        <Field label="Auto quality">
+          <Segmented
+            label="Auto quality"
+            value={settings.autoQuality}
+            options={['off', 'on'] as const}
+            onChange={(autoQuality) => updateSettings({ autoQuality })}
+          />
+        </Field>
         <Field label="Default camera">
           <Segmented
             label="Default camera"

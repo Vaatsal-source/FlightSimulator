@@ -6,7 +6,7 @@
  * fades in near the camera.
  */
 
-import { Color, MeshStandardMaterial, Vector2 } from 'three'
+import { Color, MeshLambertMaterial, Vector2 } from 'three'
 import { AIRPORTS } from '../../config/airports'
 
 const PALETTE = {
@@ -48,6 +48,8 @@ varying vec2 vBiome;
 varying vec3 vTerrainPos;
 varying vec3 vTerrainNormal;
 varying float vAirDist;
+uniform float uTime;
+uniform float uCloudShade;
 uniform vec3 uSeabedDeep;
 uniform vec3 uSeabed;
 uniform vec3 uSand;
@@ -175,6 +177,15 @@ const FRAGMENT_COLOR = /* glsl */ `
   // Grass grain at every range: a speckle whose cells stay about 2-3 pixels wide, stepping up by octaves with
   // distance (like mipmaps for noise) and crossfading between steps, so it neither swims nor turns to blur.
 #ifndef TERRAIN_LITE
+  // Cloud shadows: soft dark patches drifting with the wind, fading out with distance.
+  {
+    if (dist < 22000.0) {
+      vec2 sp = wp * 0.00042 + vec2(uTime * 0.0011, uTime * 0.0004);
+      float sn = 0.62 * tNoise(sp) + 0.38 * tNoise(sp * 2.7 + 11.0);
+      float shadow = smoothstep(0.52, 0.74, sn) * (1.0 - smoothstep(9000.0, 22000.0, dist));
+      col *= 1.0 - uCloudShade * shadow;
+    }
+  }
   {
     float px = max(dist * 0.0018 * 2.5, 0.2);
     float lv = log2(px / 0.2);
@@ -192,7 +203,7 @@ const FRAGMENT_COLOR = /* glsl */ `
 `
 
 const FRAGMENT_NORMAL = /* glsl */ `
-#ifndef TERRAIN_LITE
+#if !defined(TERRAIN_LITE) && !defined(TERRAIN_MID)
 // Fine relief: a tilt of the normal from the detail noise, so the ground catches low sun instead of reading flat.
 {
   float bf = 1.0 - smoothstep(40.0, 900.0, length(vTerrainPos - cameraPosition));
@@ -215,12 +226,18 @@ const FRAGMENT_NORMAL = /* glsl */ `
 `
 
 /** Shared terrain material; dispose it when the terrain unmounts. */
-export function createTerrainMaterial(lite = false): MeshStandardMaterial {
-  const material = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 })
+export function createTerrainMaterial(detail: 'lite' | 'mid' | 'full' = 'full'): MeshLambertMaterial {
+  const lite = detail === 'lite'
+  const defines = lite ? '#define TERRAIN_LITE\n' : detail === 'mid' ? '#define TERRAIN_MID\n' : ''
+  // Lambert, not PBR: the ground is matte, and this skips the specular terms for every pixel of the screen it covers.
+  const material = new MeshLambertMaterial({ color: 0xffffff })
   const uniforms: Record<string, { value: Color }> = {}
   for (const [name, hex] of Object.entries(PALETTE)) uniforms[name] = { value: new Color(hex) }
+  // Animated from outside: the clock and how strong the cloud shadows are (weather and time of day).
+  const live = { uTime: { value: 0 }, uCloudShade: { value: 0.16 } }
+  material.userData.live = live
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms)
+    Object.assign(shader.uniforms, uniforms, live)
     shader.uniforms.uAirports = { value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
@@ -228,10 +245,10 @@ export function createTerrainMaterial(lite = false): MeshStandardMaterial {
 ${VERTEX_PARS}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERTEX_MAIN}`)
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n#define AIRPORT_COUNT ${AIRPORTS.length}\n${FRAGMENT_PARS}`)
+      .replace('#include <common>', `#include <common>\n#define AIRPORT_COUNT ${AIRPORTS.length}\n${defines}${FRAGMENT_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${FRAGMENT_COLOR}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAGMENT_NORMAL}`)
   }
-  material.customProgramCacheKey = () => (lite ? 'flysim-terrain-v5-lite' : 'flysim-terrain-v5')
+  material.customProgramCacheKey = () => `flysim-terrain-v7-${detail}`
   return material
 }

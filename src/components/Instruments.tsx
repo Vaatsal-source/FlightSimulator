@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { getAircraft, type AircraftSpeeds } from '../config/aircraftCatalog'
 import { useGameStore, type Units } from '../state/gameStore'
-import { useTelemetry } from '../state/telemetry'
+import { useTelemetryLive } from '../state/telemetry'
 import {
   altitudeUnit,
   altitudeValue,
@@ -323,7 +323,7 @@ function N1Gauge({ n1 }: { n1: number }) {
 
 /** Six-pack instrument panel. Reads live telemetry; never intercepts the pointer. */
 export function InstrumentPanel() {
-  const t = useTelemetry()
+  const t = useTelemetryLive()
   const units = useGameStore((s) => s.settings.units)
   const aircraft = getAircraft(t.aircraftId)
   return (

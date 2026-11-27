@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { FlightAudio } from '../audio/FlightAudio'
 import { QUALITY_PROFILES } from '../config/quality'
 import { KeyboardControls } from '../input/keyboard'
@@ -31,6 +31,19 @@ export function FlightCanvas() {
   // The most pixels per CSS pixel this display and quality level allow; the governor lowers it when frames run long.
   const maxDpr = Math.max(1, Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, QUALITY_PROFILES[quality].maxDpr))
   const [software, setSoftware] = useState(false)
+  // Still slow at the lowest resolution: step the quality tier down (high, medium, low), at most once in 20 s.
+  const lastLowered = useRef(0)
+  const lowerQuality = useCallback(() => {
+    const now = performance.now()
+    if (now - lastLowered.current < 20000) return
+    if (useGameStore.getState().settings.autoQuality !== 'on') return
+    const q = useGameStore.getState().settings.quality
+    const next = q === 'high' ? 'medium' : q === 'medium' ? 'low' : null
+    if (!next) return
+    lastLowered.current = now
+    useGameStore.getState().updateSettings({ quality: next })
+  }, [])
+  const resolution = useGameStore((s) => s.settings.resolution)
 
   // No GPU (software rendering): start on the lowest quality once, so the first flight is playable.
   useEffect(() => {
@@ -151,7 +164,7 @@ export function FlightCanvas() {
       >
         <SimulationDriver session={session} audio={audio} />
         <PerfProbe />
-        <AdaptiveResolution max={maxDpr} software={software} />
+        <AdaptiveResolution max={maxDpr} software={software} native={resolution === 'native'} onStuck={lowerQuality} />
         <FlightWorld
           renderState={session.renderState}
           terrain={terrain}

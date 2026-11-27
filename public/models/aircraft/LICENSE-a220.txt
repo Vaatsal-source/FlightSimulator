@@ -1,0 +1,8 @@
+Model Information:
+* title:	AIRBUS A220-300
+* source:	https://sketchfab.com/3d-models/airbus-a220-300-0e1e27c43ce54872b0bb75185edce792
+* author:	CreditFreeStudio (https://sketchfab.com/CreditFreeStudio)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works

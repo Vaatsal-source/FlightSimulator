@@ -38,6 +38,7 @@ export class ResolutionGovernor {
   private ceiling: number
   private ceilingUntil = 0
   private clock = 0
+  private floorTime = 0
   private readonly min: number
   private readonly max: number
   private readonly slow: number
@@ -46,14 +47,23 @@ export class ResolutionGovernor {
   constructor(o: GovernorOptions) {
     this.max = o.max
     this.min = Math.min(o.min ?? 0.5, o.max)
-    this.slow = o.slowMs ?? 27
-    this.fast = o.fastMs ?? 19
+    this.slow = o.slowMs ?? 31
+    this.fast = o.fastMs ?? 25
     this.scale = Math.min(this.max, Math.max(this.min, o.start ?? o.max))
     this.ceiling = this.max
   }
 
   get current(): number {
     return this.scale
+  }
+
+  /** Seconds spent at the lowest resolution while frames are still too slow: the cue to lower the quality tier. */
+  get stuckSeconds(): number {
+    return this.floorTime
+  }
+
+  resetStuck(): void {
+    this.floorTime = 0
   }
 
   /** Feed one frame (ms). Returns the ratio to use, which changes at most about once a second. */
@@ -63,6 +73,8 @@ export class ResolutionGovernor {
     this.clock += ms / 1000
     this.ema += (ms - this.ema) * 0.04
     this.since += ms / 1000
+    if (this.scale <= this.min + 1e-6 && this.ema > this.slow) this.floorTime += ms / 1000
+    else this.floorTime = 0
     if (this.since < 1) return this.scale
     this.since = 0
     if (this.clock > this.ceilingUntil && this.ceiling < this.max) {

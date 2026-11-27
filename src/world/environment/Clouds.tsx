@@ -62,7 +62,9 @@ void main() {
   vec4 t = texture2D(uMap, vUv);
   float a = t.a * vFade * uOpacity;
   if (a < 0.01) discard;
-  vec3 col = mix(uShade, uLit, vLight) * (0.88 + 0.12 * t.r);
+  // Flat-bottomed cumulus: each puff is darker at its base and brighter on top.
+  float lit = clamp(vLight + (vUv.y - 0.45) * 0.55, 0.0, 1.0);
+  vec3 col = mix(uShade, uLit, lit) * (0.88 + 0.12 * t.r);
   gl_FragColor = vec4(col, a);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

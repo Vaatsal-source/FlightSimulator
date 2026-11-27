@@ -21,6 +21,9 @@ export interface PerfSnapshot {
   /** Render resolution as a device-pixel-ratio, and whether WebGL runs on the CPU. */
   scale: number
   software: boolean
+  /** GPU time per frame (ms, smoothed) when the browser can measure it, else null; and the graphics card's name. */
+  gpuMs: number | null
+  renderer: string
 }
 
 const WINDOW = 240 // frames kept for the percentile stats
@@ -34,6 +37,16 @@ let geometries = 0
 let textures = 0
 let scale = 1
 let software = false
+let gpuMs: number | null = null
+let renderer = ''
+
+export function setPerfGpu(ms: number): void {
+  gpuMs = gpuMs === null ? ms : gpuMs + (ms - gpuMs) * 0.1
+}
+
+export function setPerfRenderer(name: string): void {
+  renderer = name
+}
 
 export function setPerfScale(s: number, isSoftware?: boolean): void {
   scale = s
@@ -57,7 +70,7 @@ export function resetPerf(): void {
 
 export function readPerf(): PerfSnapshot {
   if (count === 0) {
-    return { fps: 0, frameMs: 0, worstMs: 0, low1Fps: 0, drawCalls, triangles, geometries, textures, heapMb: null, scale, software }
+    return { fps: 0, frameMs: 0, worstMs: 0, low1Fps: 0, drawCalls, triangles, geometries, textures, heapMb: null, scale, software, gpuMs, renderer }
   }
   const sample = Array.from(frames.subarray(0, count)).sort((a, b) => a - b)
   const mean = sample.reduce((a, b) => a + b, 0) / count
@@ -78,5 +91,7 @@ export function readPerf(): PerfSnapshot {
     heapMb: mem ? mem.usedJSHeapSize / 1048576 : null,
     scale,
     software,
+    gpuMs,
+    renderer,
   }
 }

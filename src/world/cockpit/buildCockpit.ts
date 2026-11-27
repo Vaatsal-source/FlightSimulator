@@ -39,7 +39,7 @@ import { getAircraft, type AircraftId } from '../../config/aircraftCatalog'
 import type { Ctx, PanelState } from './canvasKit'
 import { cockpitSpecFor, TEXTURE_SIZE } from './cockpitSpec'
 import { drawSixPack } from './dialDraw'
-import { drawHud, drawMfd } from './fighterDraw'
+import { drawDed, drawHud, drawMfd, drawMfdAttitude, drawMfdNav } from './fighterDraw'
 import { drawEicas, drawMcp, drawPfd } from './glassDraw'
 
 export interface CockpitControls {
@@ -496,48 +496,83 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
       box(root, 0.16, 0.12, 0.34, plastic, [-0.55, -0.86, -0.12]) // side console
     }
   } else {
-    // Fighter: HUD, three MFDs, canopy arches and rails, closed tub.
+    // Fighter: a HUD on posts above a sloped glare-shield, a keypad and data display, three MFDs with bezel
+    // buttons, a standby cluster, a tapered tub with canopy bows, rails and a rear-view mirror.
     addScreen(root, TEXTURE_SIZE.hud, { w: 0.36, h: 0.36 }, [0, 0.03, -0.9], drawHud, [0, 0, 0], true)
     glass(0.34, 0.34, [0, 0.03, -0.895], [0, 0, 0]) // combiner glass tint
-    box(root, 0.34, 0.05, 0.12, glareMat, [0, -0.2, -0.86]) // HUD housing
-    box(root, 0.012, 0.24, 0.012, trim, [-0.19, 0.0, -0.9])
-    box(root, 0.012, 0.24, 0.012, trim, [0.19, 0.0, -0.9])
-    box(root, 0.4, 0.012, 0.012, trim, [0, 0.16, -0.9])
+    // Combiner frame: two tall posts, a top bar and a bottom rail, with the HUD box below.
+    for (const sx of [-1, 1]) {
+      bar([sx * 0.2, -0.2, -0.88], [sx * 0.19, 0.2, -0.92], 0.024, 0.024, trim)
+      box(root, 0.05, 0.05, 0.05, glareMat, [sx * 0.2, -0.2, -0.88])
+    }
+    box(root, 0.4, 0.014, 0.02, trim, [0, 0.2, -0.92])
+    box(root, 0.4, 0.014, 0.02, trim, [0, -0.15, -0.88])
+    box(root, 0.5, 0.07, 0.16, glareMat, [0, -0.23, -0.86])
+    // Glare-shield: a long sloped hood over the panel, with a lip.
+    box(root, 1.5, 0.03, 0.5, glareMat, [0, -0.215, -0.8], [-0.12, 0, 0])
+    // Main panel, tilted back a little.
     const panel = new Group()
-    panel.position.set(0, -0.3, -0.76)
-    panel.rotation.set(-0.28, 0, 0)
+    panel.position.set(0, -0.36, -0.7)
+    panel.rotation.set(-0.3, 0, 0)
     panel.updateMatrix()
     root.add(panel)
-    box(panel, 1.3, 0.3, 0.05, plastic, [0, 0, 0])
-    detail(panel, 1.26, 0.28, [0, 0, 0.0252], [0, 0, 0], 30, 8, 13)
-    bezel(panel, 0.21, 0.21, [0, 0, 0.03])
-    bezel(panel, 0.17, 0.17, [-0.29, 0.01, 0.03])
-    bezel(panel, 0.17, 0.17, [0.29, 0.01, 0.03])
-    const mfd = addScreen(panel, TEXTURE_SIZE.mfd, { w: 0.21, h: 0.21 }, [0, 0.0, 0.03], drawMfd)
-    mirrorScreen(panel, mfd, { w: 0.17, h: 0.17 }, [-0.29, 0.01, 0.03])
-    mirrorScreen(panel, mfd, { w: 0.17, h: 0.17 }, [0.29, 0.01, 0.03])
-    box(root, 1.4, 0.5, 0.5, plastic, [0, -0.62, -0.55])
-    // Tub: floor, back wall, side walls up to the canopy rails.
-    box(root, 1.5, 0.05, 2.2, carpet, [0, -0.9, 0.0])
-    box(root, 1.5, 1.4, 0.05, plastic, [0, -0.2, 1.1])
-    // Canopy: front bow, mid bow, rear arch and side rails.
+    box(panel, 1.36, 0.42, 0.05, plastic, [0, 0, 0])
+    detail(panel, 1.32, 0.4, [0, 0, 0.0252], [0, 0, 0], 34, 9, 13)
+    // Keypad and data display band under the HUD.
+    detail(panel, 0.34, 0.07, [0, 0.165, 0.0262], [0, 0, 0], 12, 3, 31)
+    bezel(panel, 0.18, 0.055, [-0.27, 0.168, 0.03])
+    addScreen(panel, { w: 256, h: 96 }, { w: 0.18, h: 0.055 }, [-0.27, 0.168, 0.031], drawDed)
+    // Three MFDs, each with a ring of bezel buttons, left attitude, centre engines, right navigation.
+    const mfds: [number, number, number, Draw][] = [
+      [-0.4, -0.02, 0.2, drawMfdAttitude],
+      [0, -0.02, 0.23, drawMfd],
+      [0.4, -0.02, 0.2, drawMfdNav],
+    ]
+    for (const [mx, my, ms, draw] of mfds) {
+      box(panel, ms + 0.06, ms + 0.06, 0.012, glareMat, [mx, my, 0.032]) // thick black frame
+      addScreen(panel, TEXTURE_SIZE.mfd, { w: ms, h: ms }, [mx, my, 0.0385], draw)
+      sheen(panel, ms, ms, [mx, my, 0.0392])
+      for (let i = 0; i < 5; i++) {
+        const o = -ms / 2 + (ms / 5) * (i + 0.5)
+        box(panel, 0.014, 0.01, 0.01, brushed, [mx + o, my + ms / 2 + 0.036, 0.034]) // top row
+        box(panel, 0.014, 0.01, 0.01, brushed, [mx + o, my - ms / 2 - 0.036, 0.034]) // bottom row
+        box(panel, 0.01, 0.014, 0.01, brushed, [mx - ms / 2 - 0.036, my + o, 0.034]) // left column
+        box(panel, 0.01, 0.014, 0.01, brushed, [mx + ms / 2 + 0.036, my + o, 0.034]) // right column
+      }
+      box(panel, 0.03, 0.012, 0.01, knobYellow, [mx, my - ms / 2 - 0.058, 0.034]) // brightness rocker
+    }
+    // Standby cluster and lamp strip in the lower centre.
+    bezel(panel, 0.28, 0.1, [0, -0.19, 0.031])
+    addScreen(panel, TEXTURE_SIZE.gauges, { w: 0.28, h: 0.1 }, [0, -0.19, 0.0335], drawSixPack)
+    for (let i = 0; i < 6; i++) box(panel, 0.024, 0.012, 0.008, i % 3 === 0 ? green : i % 3 === 1 ? amber : red, [-0.34 + i * 0.05, -0.185, 0.033])
+    box(root, 1.5, 0.5, 0.5, plastic, [0, -0.66, -0.52])
+    // Tub: a floor, a sloped back wall, tapered sides up to the canopy rails, and the sloped side consoles.
+    box(root, 1.5, 0.05, 2.2, carpet, [0, -0.95, 0.0])
+    box(root, 1.5, 1.4, 0.05, plastic, [0, -0.25, 1.1])
+    for (const sx of [-1, 1]) {
+      box(root, 0.05, 0.55, 1.7, plastic, [sx * 0.72, -0.35, -0.15], [0, 0, sx * 0.12]) // leaning side wall
+      box(root, 0.06, 0.05, 1.7, brushed, [sx * 0.7, -0.1, -0.15]) // canopy sill rail
+      box(root, 0.2, 0.14, 1.3, plastic, [sx * 0.52, -0.42, -0.1], [0, 0, sx * -0.08]) // side console
+      detail(root, 0.18, 1.24, [sx * 0.52, -0.345, -0.1], [-Math.PI / 2, 0, sx * -0.08], 6, 22, 21 + sx, true)
+      for (let i = 0; i < 4; i++) box(root, 0.02, 0.012, 0.03, i % 2 ? green : amber, [sx * 0.54, -0.335, -0.5 + i * 0.12]) // annunciator strip
+    }
+    // Canopy: three bows, the side rails, and a rear-view mirror on the front bow.
     for (const [z, r] of [
       [-0.95, 0.6],
       [-0.2, 0.7],
       [0.45, 0.72],
-    ] as const) solid(root, new TorusGeometry(r, 0.018, 8, 28, Math.PI), trim, [0, -0.12, z])
+    ] as const) solid(root, new TorusGeometry(r, 0.024, 8, 32, Math.PI), trim, [0, -0.1, z])
     for (const sx of [-1, 1]) {
-      bar([sx * 0.6, -0.12, -0.95], [sx * 0.7, -0.12, -0.2], 0.04, 0.04)
-      bar([sx * 0.7, -0.12, -0.2], [sx * 0.72, -0.12, 0.45], 0.04, 0.04)
-      box(root, 0.05, 0.2, 1.7, plastic, [sx * 0.72, -0.2, -0.15]) // sill wall under the rail
-      box(root, 0.2, 0.2, 1.3, plastic, [sx * 0.5, -0.34, -0.1]) // side consoles
-      detail(root, 0.18, 1.24, [sx * 0.5, -0.2395, -0.1], [-Math.PI / 2, 0, 0], 6, 22, 21 + sx, true)
+      bar([sx * 0.6, -0.1, -0.95], [sx * 0.7, -0.1, -0.2], 0.045, 0.045)
+      bar([sx * 0.7, -0.1, -0.2], [sx * 0.72, -0.1, 0.45], 0.045, 0.045)
     }
+    box(root, 0.3, 0.06, 0.02, glareMat, [0, 0.62, -0.78]) // mirror housing
+    box(root, 0.26, 0.045, 0.004, rubber, [0, 0.62, -0.769]) // mirror face
     box(root, 0.34, 0.5, 0.14, leather, [0, 0.0, 0.5]) // headrest
     box(root, 0.5, 0.1, 0.45, leather, [0, -0.46, 0.15])
-    lever([-0.5, -0.235, -0.3], 0.14)
-    lever([-0.46, -0.235, -0.3], 0.14)
-    stick = makeStick([0, -0.64, -0.3], 0.3)
+    lever([-0.5, -0.33, -0.3], 0.14)
+    lever([-0.46, -0.33, -0.3], 0.14)
+    stick = makeStick([0, -0.7, -0.3], 0.3)
   }
 
   // ---- furnishing: the small things that make it a room somebody works in ----

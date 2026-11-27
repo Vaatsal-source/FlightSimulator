@@ -54,10 +54,10 @@ function WorldContent({
 
       {/* The camera rig runs first so everything that follows the camera sees its final pose. */}
       <CameraRig renderState={renderState} terrain={terrain} mode={cameraMode} mouseSensitivity={mouseSensitivity} />
-      <Sky timeOfDay={timeOfDay} weather={weather} />
+      <Sky timeOfDay={timeOfDay} weather={weather} detail={profile.terrainDetail} />
       <Lighting renderState={renderState} profile={profile} timeOfDay={timeOfDay} weather={weather} />
 
-      <TerrainSystem terrain={terrain} profile={profile} />
+      <TerrainSystem terrain={terrain} profile={profile} weather={weather} timeOfDay={timeOfDay} />
       <Scenery terrain={terrain} />
       <Water profile={profile} timeOfDay={timeOfDay} weather={weather} />
       <Airports shadows={profile.shadows} />

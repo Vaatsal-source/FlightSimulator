@@ -66,7 +66,7 @@ const LOOKS: Record<TimeOfDay, EnvironmentLook> = {
   noon: {
     fogColor: 0xbcd6ea,
     horizonColor: 0xbcd6ea,
-    zenithColor: 0x3f78c4,
+    zenithColor: 0x2a6bd0,
     sunDirection: dir(0.15, 0.96, 0.22),
     sunColor: 0xfff6e8,
     sunIntensity: 2.6,

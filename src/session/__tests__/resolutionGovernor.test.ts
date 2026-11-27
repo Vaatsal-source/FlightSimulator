@@ -27,7 +27,7 @@ describe('resolution governor', () => {
     let r = g.current
     for (let t = 0; t < 120; t += 0.02) r = g.frame(50 * (r / 2) ** 2)
     const ms = 50 * (r / 2) ** 2
-    expect(ms).toBeLessThan(27.5)
+    expect(ms).toBeLessThan(31.5)
     expect(r).toBeGreaterThan(1.2) // not needlessly low
   })
 

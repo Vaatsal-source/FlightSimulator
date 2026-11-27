@@ -23,6 +23,7 @@ import {
   type V3,
 } from './geomKit'
 import { JetAssembly, type EngineSpec } from './jetKit'
+import { attachTransportBody, type PhotoBodyCfg } from './photoBody'
 import type { AircraftRig } from './rigTypes'
 
 interface Range {
@@ -100,6 +101,14 @@ export function fill(b: GeoBuilder, secs: Sec[], u0: number, ranges: Range[], to
     cur = r.t1
   }
   if (total - cur > 1e-6) addPanel(b, secs, cur, total, u0, 1, colour)
+}
+
+/** The photographic airframes (photoBody.ts): the file, how to turn it nose-forward, and whether it has its own landing gear. */
+const PHOTO: Partial<Record<AircraftId, Pick<PhotoBodyCfg, 'file' | 'hiFile' | 'rotY' | 'modelHasGear' | 'clearance' | 'gearFold'>>> = {
+  a220: { file: 'a220.glb', hiFile: 'a220-hi.glb', rotY: 0, modelHasGear: true, clearance: 0, gearFold: { mainAxis: 'z', mainLeftSign: 1, noseAxis: 'x', noseSign: -1 } },
+  a320: { file: 'a320.glb', hiFile: 'a320-hi.glb', rotY: -Math.PI / 2, modelHasGear: true, clearance: 0, gearFold: { mainAxis: 'x', mainLeftSign: -1, noseAxis: 'z', noseSign: 1 } },
+  a350: { file: 'a350.glb', rotY: Math.PI, modelHasGear: false, clearance: 1.3 },
+  global8000: { file: 'global8000.glb', rotY: Math.PI, modelHasGear: false, clearance: 1.0 },
 }
 
 export function buildTransport(cfg: TransportCfg, shadows: boolean): AircraftRig {
@@ -277,7 +286,17 @@ export function buildTransport(cfg: TransportCfg, shadows: boolean): AircraftRig
   }
 
   asm.navLights(cfg.nav.left, cfg.nav.right, cfg.nav.tail, cfg.nav.r)
-  return asm.finish((x, y, z) => hull.contains(x, y, z, 0))
+  const rig = asm.finish((x, y, z) => hull.contains(x, y, z, 0))
+  const body = PHOTO[cfg.id]
+  if (body) {
+    attachTransportBody(asm, {
+      ...body,
+      noseZ: hull.z0,
+      tailZ: cfg.hull[cfg.hull.length - 1].z,
+      groundY: Math.min(gg.nose.y, gg.mainLeft.y, gg.mainRight.y),
+    })
+  }
+  return rig
 }
 
 // ======================================================================= A350

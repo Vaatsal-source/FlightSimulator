@@ -139,6 +139,8 @@ export class JetAssembly {
   strobes: Mesh[] = []
   extra: FrameUpdate[] = []
   glassHideInCockpit: Mesh | null = null
+  /** The merged nav-light mesh (set when the rig is finished). */
+  lampsMesh: Mesh | null = null
   private time = 0
   private envelopeTests: ((x: number, y: number, z: number) => boolean)[] = []
 
@@ -406,6 +408,7 @@ export class JetAssembly {
       const lm = new Mesh(this.geo(this.lamps), this.lampMat)
       lm.userData.noBounds = true
       this.root.add(lm)
+      this.lampsMesh = lm
     }
     this.envelopeTests.push(hullContains)
     this.root.updateMatrixWorld(true)

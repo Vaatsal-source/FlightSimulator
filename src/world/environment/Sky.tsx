@@ -19,11 +19,26 @@ uniform vec3 uZenith;
 uniform vec3 uSunDir;
 uniform vec3 uSunColor;
 uniform float uStars;
+uniform float uCirrus;
+uniform float uTime;
 varying vec3 vDir;
+float h21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+float n2(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = p - i;
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 void main() {
   vec3 d = normalize(vDir);
   float up = max(d.y, 0.0);
   vec3 col = mix(uHorizon, uZenith, pow(up, 0.55));
+  // Haze: a pale, bright band that thickens towards the horizon, like light scattering through the lower air.
+  col = mix(col, uHorizon * 1.05 + 0.02, exp(-up * 8.0) * 0.4);
   col = mix(col, uHorizon * 0.9, clamp(-d.y * 3.0, 0.0, 1.0));
 
   float s = max(dot(d, uSunDir), 0.0);
@@ -34,12 +49,23 @@ void main() {
   col += uSunColor * pow(s, 500.0) * 0.55;
   float disc = smoothstep(0.99935, 0.99965, s) * smoothstep(-0.03, 0.02, d.y);
   col = mix(col, vec3(1.0, 0.98, 0.92), disc);
+  // High cirrus: thin streaks, projected onto a plane overhead so they thin out towards the horizon.
+  if (uCirrus > 0.0 && d.y > 0.03) {
+    vec2 p = d.xz / (d.y + 0.12) * vec2(1.4, 3.4) + vec2(uTime * 0.012, 0.0);
+    float f = 0.55 * n2(p) + 0.3 * n2(p * 2.3 + 7.0) + 0.15 * n2(p * 5.1 + 3.0);
+    float c = smoothstep(0.5, 0.82, f) * smoothstep(0.03, 0.3, d.y) * 0.6;
+    vec3 cir = mix(uHorizon, vec3(1.0), 0.65) * (0.65 + 0.35 * clamp(uSunDir.y + 0.3, 0.0, 1.0));
+    cir += uSunColor * pow(s, 8.0) * 0.25;
+    col = mix(col, cir, c * (1.0 - uStars));
+  }
   if (uStars > 0.0 && d.y > 0.0) {
     vec3 id = floor(d * 190.0);
     float h = fract(sin(dot(id, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
     float twinkle = 0.75 + 0.25 * fract(h * 91.7);
     col += vec3(smoothstep(0.9968, 1.0, h) * smoothstep(0.0, 0.22, d.y) * uStars * twinkle);
   }
+  // A touch of noise stops the smooth gradient from banding.
+  col += (h21(gl_FragCoord.xy) - 0.5) / 255.0;
   gl_FragColor = vec4(col, 1.0);
 }
 `
@@ -49,7 +75,7 @@ void main() {
  * re-centred on the camera every frame (place it after the camera rig), so a
  * 60 km camera far plane never clips it.
  */
-export function Sky({ timeOfDay, weather = 'clear' }: { timeOfDay: TimeOfDay; weather?: Weather }) {
+export function Sky({ timeOfDay, weather = 'clear', detail = 'full' }: { timeOfDay: TimeOfDay; weather?: Weather; detail?: 'lite' | 'mid' | 'full' }) {
   const ref = useRef<Mesh>(null)
   const camera = useThree((s) => s.camera)
 
@@ -63,6 +89,8 @@ export function Sky({ timeOfDay, weather = 'clear' }: { timeOfDay: TimeOfDay; we
         uSunDir: { value: look.sunDirection.clone() },
         uSunColor: { value: displayColor(look.sunColor) },
         uStars: { value: 0 },
+        uCirrus: { value: detail === 'lite' ? 0 : 1 },
+        uTime: { value: 0 },
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
@@ -72,6 +100,7 @@ export function Sky({ timeOfDay, weather = 'clear' }: { timeOfDay: TimeOfDay; we
       fog: false,
     })
     return { geometry, material }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- built once; `detail` is applied by the effect below
   }, [])
 
   useEffect(() => {
@@ -82,7 +111,8 @@ export function Sky({ timeOfDay, weather = 'clear' }: { timeOfDay: TimeOfDay; we
     u.uSunDir.value.copy(look.sunDirection)
     u.uSunColor.value.copy(displayColor(look.sunColor))
     u.uStars.value = look.stars
-  }, [resources, timeOfDay, weather])
+    u.uCirrus.value = detail !== 'lite' && weather !== 'fog' ? 1 : 0
+  }, [resources, timeOfDay, weather, detail])
 
   useEffect(
     () => () => {
@@ -92,7 +122,8 @@ export function Sky({ timeOfDay, weather = 'clear' }: { timeOfDay: TimeOfDay; we
     [resources],
   )
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
+    resources.material.uniforms.uTime.value = clock.elapsedTime
     if (ref.current) ref.current.position.copy(camera.position)
   })
 

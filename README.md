@@ -12,14 +12,14 @@ Start cold and dark at the gate, push back, taxi, take off, fly and land, from a
 [![Three.js](https://img.shields.io/badge/Three.js-r186-black?logo=three.js)](https://threejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 
-<img src="docs/main-menu.png" alt="FlySim main menu: game modes, aircraft picker and time of day over a runway at an airport" width="720">
+<img src="docs/main-menu.png" alt="FlySim main menu: a photograph of an aircraft over mountains, angled buttons down the left and a flight-setup panel on the right" width="720">
 
 </div>
 
 ## Features
 
 - **Flight physics:** lift, drag, thrust, ground handling and wind (gusts, crosswind) for each aircraft, including landing on open ground
-- **Six aircraft:** FS-1 Trainer, Airbus A220, Airbus A320, Airbus A350, Bombardier Global 8000 and F-22, each tuned against published figures
+- **Six aircraft:** FS-1 Trainer, Airbus A220, Airbus A320, Airbus A350, Bombardier Global 8000 and F-22, each tuned against published figures. The airliners, the business jet and the F-22 are drawn from detailed 3D models (the A320 and A220 have working, retracting landing gear; the A220 has a livery)
 - **Gate departure:** start cold and dark at the stand, refuel and board through a working jet bridge, stay within weight and balance limits, push back (`T`), start the engines, taxi with ATC and a checklist, and take off
 - **Gate arrival:** land, vacate the runway, taxi in, park on the stand and deplane
 - **Busy airports:** glass terminals with finger piers, gates, parked airliners, ground vehicles, towers, hangars and fuel farms; several have parallel runways; airliners taxi and take off around you
@@ -27,9 +27,10 @@ Start cold and dark at the gate, push back, taxi, take off, fly and land, from a
 - **Wind:** calm to strong, with gusts, animated windsocks and a HUD readout
 - **Autopilot and landing assist** (press `0` near a runway): speed, heading, altitude and vertical-speed holds, and an approach down the 3° glide path to 100 ft, with a go-around if it is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
-- **3D cockpits:** a detailed flight deck for each aircraft (round gauges, airliner glass screens, fighter HUD), with head motion and mouse look
+- **3D cockpits:** a detailed flight deck for each aircraft (round gauges, airliner glass screens, a fighter HUD with MFDs), with head motion and mouse look
 - **AI traffic:** airliners fly between the airports, take off and land (scenery, no collision)
 - **Maps:** a minimap and a full world map
+- **Runs on modest hardware:** an adaptive render resolution, three quality levels, automatic detection of software rendering (no GPU), and an `F3` readout of frame rate, draw calls, triangles, GPU time and your graphics card (see [Performance](#performance))
 
 ## Quick start
 
@@ -43,6 +44,16 @@ npm run dev
 ```
 
 Then open the local URL Vite prints (usually http://localhost:5173). Pick **Gate Departure** for the full experience, or **Quick Flight** to start on the runway.
+
+## Performance
+
+Open **Settings** to tune it, and press `F3` in flight to see what is happening.
+
+- **Quality** (Low, Medium, High): shadows, tree and cloud counts, view distance, anti-aliasing and the detail of the airliner models. Medium and High use the high-detail A320 and A220 models; Low uses lighter ones.
+- **Resolution:** *Auto* lowers the render resolution when frames run long (never below 85% on a real GPU) and raises it again when there is room; *Native* always renders at full sharpness.
+- **Auto quality:** off by default. When on, the game also lowers the quality level by itself if it still cannot keep up at the lowest resolution.
+- **No GPU:** if the browser reports software rendering (SwiftShader, llvmpipe and similar), the game starts at a low resolution on the Low quality level. Enabling hardware acceleration in the browser is the biggest single improvement.
+- **F3** shows frames per second, the slowest frames, draw calls, triangles, the quality level and render scale, GPU time per frame (where the browser can measure it) and the graphics card's name.
 
 ## Controls
 
@@ -170,6 +181,8 @@ The free Render plan sleeps after about 15 minutes idle; the first connection af
 | `npm run typecheck` | Type-check without building         |
 | `npm run lint`      | Lint with ESLint                    |
 
+The 3D models in `public/models` are built from the original downloads (kept in `assets-src/`, which is git-ignored and not deployed) by `node scripts/prepare-f22.mjs` and `node scripts/prepare-aircraft.mjs [id]`. You only need to run them to change a model.
+
 ## Project layout
 
 ```
@@ -178,7 +191,7 @@ src/
 ├── config/       Aircraft, airports and world settings
 ├── autopilot/    Autopilot holds and the landing assist
 ├── game/         Modes, lessons, challenges, scoring and the landing coach
-├── world/        Three.js scene: terrain, airports, aircraft, camera
+├── world/        Three.js scene: terrain, airports, aircraft, cockpits, scenery, sky, camera
 ├── components/   React UI: menus, HUD, instruments, maps
 ├── input/        Keyboard controls and hotkeys
 ├── audio/        Engine sound and callouts
@@ -186,6 +199,8 @@ src/
 ├── net/          Multiplayer protocol, client and remote-pose smoothing
 └── state/        Zustand stores
 server/           Multiplayer room server (Node + ws)
+scripts/          Build-time tools that shrink the 3D models for the web
+public/models/    Web-ready 3D models and their licences
 ```
 
 ## Contributing
@@ -205,6 +220,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an i
 
 ## Credits
 
+- F-22 exterior: "F-22 Raptor - Fighter Jet - Free" by bohmerang (https://sketchfab.com/3d-models/f-22-raptor-fighter-jet-free-508de5c48845456bb033fb267ebe1d1e), licensed [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). **Non-commercial use only**, and modified versions must keep the same licence; the textures were resized for the web (`scripts/prepare-f22.mjs`). See [public/models/f22/LICENSE.txt](public/models/f22/LICENSE.txt).
+- Airliner and business-jet exteriors, resized for the web by `scripts/prepare-aircraft.mjs`: Airbus A220-300 by CreditFreeStudio (Sketchfab Standard licence); Airbus A320-200 by Dlourine ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); Airbus A350-1000 and Bombardier Learjet 60 (used for the Global 8000) by OUTPISTON ([CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), non-commercial, share-alike). Licence texts are in `public/models/aircraft/`.
+- Main menu background (`public/BackdropImageMenu.jpg`): a screenshot of another product, supplied for personal use. Replace it with an image you have the rights to before publishing the game publicly.
 - AI traffic airliners (A320, A350, A380, B737, B787): [amvlab aircraft-models](https://github.com/amvlab/aircraft-models), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [public/models/traffic/CREDITS.md](public/models/traffic/CREDITS.md).
 
 ## License

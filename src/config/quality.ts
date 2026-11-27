@@ -29,42 +29,42 @@ export interface QualityProfile {
   trafficCount: number
   /** 'animated' = wave shader with sun glint; 'simple' = flat tinted plane. */
   waterDetail: 'simple' | 'animated'
-  /** 'lite' = the cheaper ground shader (no close-up noise, ploughed rows or relief), for weak GPUs. */
-  terrainDetail: 'lite' | 'full'
+  /** Ground shader cost: 'lite' (no close-up noise, ploughed rows or relief), 'mid' (no relief), 'full'. */
+  terrainDetail: 'lite' | 'mid' | 'full'
 }
 
 export const QUALITY_PROFILES: Record<Quality, QualityProfile> = {
   low: {
     terrainViewDistance: 12000,
-    terrainLodBias: 0.75,
+    terrainLodBias: 0.6,
     treeDensity: 40,
     treeViewDistance: 2500,
     cloudCount: 40,
     shadows: false,
-    shadowMapSize: 1024,
+    shadowMapSize: 512,
     fogFar: 14000,
     maxDpr: 1,
     trafficCount: 2,
     waterDetail: 'simple',
-    terrainDetail: 'lite',
+    terrainDetail: 'full',
   },
   medium: {
     terrainViewDistance: 20000,
-    terrainLodBias: 1,
+    terrainLodBias: 0.8,
     treeDensity: 80,
     treeViewDistance: 4000,
     cloudCount: 90,
     shadows: true,
-    shadowMapSize: 2048,
+    shadowMapSize: 1024,
     fogFar: 22000,
-    maxDpr: 1.5,
+    maxDpr: 1.25,
     trafficCount: 5,
     waterDetail: 'animated',
     terrainDetail: 'full',
   },
   high: {
     terrainViewDistance: 32000,
-    terrainLodBias: 1.4,
+    terrainLodBias: 1.15,
     treeDensity: 140,
     treeViewDistance: 6000,
     cloudCount: 160,

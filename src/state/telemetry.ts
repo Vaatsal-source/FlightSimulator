@@ -213,6 +213,11 @@ export function resetTelemetry(): void {
   publishTelemetry(INITIAL_TELEMETRY)
 }
 
+/** Re-renders on every snapshot (30 Hz): for moving instruments, where 10 Hz looks choppy. */
+export function useTelemetryLive(): TelemetrySnapshot {
+  return useSyncExternalStore(subscribeTelemetry, getTelemetry, getTelemetry)
+}
+
 /** Re-renders the caller when the UI copy of the snapshot changes (about 10 Hz). */
 export function useTelemetry(): TelemetrySnapshot {
   return useSyncExternalStore(subscribeDom, getDomSnapshot, getDomSnapshot)

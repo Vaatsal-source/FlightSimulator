@@ -26,6 +26,8 @@ import { buildAirportPlan, papiColors, planToWorld, type AirportPlan, type Light
 export const DETAIL_DISTANCE = 10000
 /** PAPI colours are only refreshed within this range. */
 const PAPI_RANGE = 30000
+/** Airfield lights are drawn within this distance (plus the airfield's own size). */
+const LIGHT_RANGE = 16000
 const DEG = Math.PI / 180
 
 const LIGHT_RGB: Record<LightColor, Rgb> = {
@@ -248,6 +250,9 @@ export function Airports({ shadows }: { shadows: boolean }) {
     const cp = camera.position
     for (const n of built.nodes) {
       const dist = Math.hypot(cp.x - n.cx, cp.z - n.cz)
+      // Lights and halos of far airfields are not drawn (they are sub-pixel and cost a draw call and thousands of triangles each).
+      const near = dist < LIGHT_RANGE + n.detailRange
+      if (n.group.visible !== near) n.group.visible = near
       const show = dist < n.detailRange
       if (n.detail.visible !== show) n.detail.visible = show
       if (dist > PAPI_RANGE) continue

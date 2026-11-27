@@ -8,6 +8,7 @@
 import { Group, Mesh, Vector3 } from 'three'
 import { getAircraft } from '../../config/aircraftCatalog'
 import { GeoBuilder, Hull, addPanel, clamp, mirrorSecs, rgb, sec, smoothstep, wingContains, type RGB, type Station } from './geomKit'
+import { attachPhotoBody } from './f22Model'
 import { JetAssembly, flameMaterial } from './jetKit'
 import { fill, hullBottomY } from './transport'
 import type { AircraftRig } from './rigTypes'
@@ -204,5 +205,8 @@ export function createF22(shadows: boolean): AircraftRig {
 
   asm.navLights([-6.8, -0.4, 3.2], [6.8, -0.4, 3.2], [0, 0.35, 7.5], 0.1)
   asm.fanRate = 0
-  return asm.finish((x, y, z) => hull.contains(x, y, z, 0))
+  const rig = asm.finish((x, y, z) => hull.contains(x, y, z, 0))
+  // The nozzle blocks are replaced by the model's own tail; the flames stay.
+  attachPhotoBody(asm, nozzles.map((n) => n.g.children[0]))
+  return rig
 }

@@ -26,6 +26,9 @@ function villageGeometry(v: Village, terrain: TerrainSampler): BufferGeometry {
   const b = new MeshBuilder()
   for (const h of v.houses) {
     const y = terrain.heightAt(h.x, h.z) - 0.4
+    // A garden plot and a bare yard around each house: they tie the buildings to the ground.
+    b.quad(h.x, y + 1.0, h.z, h.w + 14, h.d + 14, 0, [0.36, 0.5, 0.26])
+    b.quad(h.x, y + 1.05, h.z, h.w + 5, h.d + 5, 0, [0.58, 0.52, 0.42])
     b.gable(h.x, h.z, h.w, h.d, y, h.h + 0.4, h.ridge, h.color)
   }
   if (v.landmark) {

@@ -163,6 +163,20 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 - **Terrain shader:** the nearest-airfield distance moved from every pixel (10 distance calculations) to every vertex.
 - **Measured with:** headless Chrome on the CPU rasteriser (SwiftShader), CDP CPU and heap profiles. That machine is not a GPU, so absolute frame rates there say little; counts (draws, triangles, GC share) do carry over.
 
+## Graphics pass 3 (sky, cloud shadows, glow, fighter deck)
+- **Fighter cockpit:** HUD on posts over a sloped hood, a keypad and data display (DED), three MFDs with bezel buttons (attitude, engines, compass), a standby cluster, tapered tub, canopy bows and rails. Still built from boxes: no free fighter-cockpit model with a usable licence was found.
+- **Sky:** bluer zenith, a bright haze band at the horizon, high cirrus streaks (off on the Low quality setting), dithering against banding; cumulus puffs are flat-bottomed.
+- **Terrain:** drifting cloud shadows (`uCloudShade`, off in fog and at night, soft under overcast; not in the Low shader); village houses stand on garden and yard plots.
+- **Glow:** soft additive halos around runway, taxiway and floodlight lights (`light-glow`).
+- **Not done:** shadows inside the cockpit (the sun's shadow map covers 340 m, too coarse for the deck), a different tone mapper (the fog and sky colours are matched to the current one), real land-cover data.
+
+## Performance pass 4 and the photographic F-22
+- **Measured:** the CPU was idle about 87% of the time in a fast F-22 flight, so the limit is GPU work, mostly triangles. Triangles in a Harbor cockpit view fell from about 188k to 92k and draw calls from 146 to 82.
+- **Changes:** far airfields no longer draw their lights and halos (16 km range; each cost a draw call and thousands of triangles); terrain level-of-detail distances tightened (low 0.6, medium 0.8, high 1.15); a real `mid` ground shader for Medium (no relief) and a `lite` one for Low (the earlier `lite` define was never actually applied; fixed); the game lowers the quality tier by itself after 6 s at the lowest resolution and still slow (not more than once every 20 s).
+- **F-22:** the body, canopy and cockpit interior come from a CC BY-NC-SA 4.0 Sketchfab model (`public/models/f22/f22.glb`, 4.6 MB after shrinking 23 MB of textures); the rig keeps its animated gear, afterburner flames and lights. The model's own control surfaces do not move. Original downloads live in `assets-src/` (git-ignored, not deployed).
+- **Hornet cockpit scan:** tried (decimated to 80k triangles, 3.6 MB), then removed at the user's request; the procedural fighter deck is back. The original download is in `assets-src/hornet-cockpit` (git-ignored).
+- **Player airliners:** A220, A320, A350 and the business jet (a Learjet 60 model standing in for the Global 8000) now use Sketchfab airframes (`scripts/prepare-aircraft.mjs`, `world/aircraft/photoBody.ts`): about 82k, 45k, 12.5k and 25k triangles. The A320 and A220 files carry their own landing gear, split out by `scripts/prepare-aircraft.mjs` into `gear_nose` / `gear_ml` / `gear_mr` meshes that the game folds up and in as the gear retracts (they shrink towards the leg's hinge while turning); the A350 and the jet keep the rig's animated gear. The A220 has a livery (blue tail, wingtips and cheat line as vertex colours on a white body) and smoothed normals; because it is over 50k triangles it casts its shadow through the rig's simple hull instead of its own mesh. The cloud shadows on the ground were switched off (the old ground look).
+
 ## Tooling note
 - On this machine `vitest run` fails in the default pool ("Cannot read properties of undefined (reading 'config')"); use `--pool=vmThreads`.
   Under that pool the heavy terrain tests need `--testTimeout=240000`, and the sampler's 400 ms wall-clock budget can fail on a slow machine.
@@ -176,3 +190,12 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 
 ## Next
 - Optional: audio (engine, stall horn), gamepad support, code-splitting three.js, wind.
+
+### Aircraft detail and auto quality (follow-up)
+- The A320 and A220 have a standard file (about 60k and 83k triangles, used on Low) and a high-detail file (`a320-hi.glb`, `a220-hi.glb`, about 130k triangles, used on Medium and High; chosen when the aircraft is built). Both come from `scripts/prepare-aircraft.mjs`.
+- Bug fixed: the gear meshes share a vertex buffer with the body, and centring their hinges edited that buffer, which shifted and shrank the A220. Hinges are now computed from each gear mesh's own triangles and the gear turns on a pivot.
+- The automatic quality step-down is now a setting (Settings > Auto quality, off by default). F3 shows the current quality tier next to the resolution.
+
+### Menu redesign and wingtip lights
+- The main menu follows the user's reference: a full-bleed photograph (`public/BackdropImageMenu.jpg`, a screenshot of another product supplied by the user; do not publish it in a public repo or deploy without checking its rights), a logo and tagline, angled buttons down the left (the first in red), and a compact flight-setup panel (aircraft, time, weather, pilot log) on the right. All labels, test ids and the mode-select screen's shared `ready-label` class are unchanged.
+- The navigation lights and strobes of the photographic airliners (`photoBody.ts` `placeNavLights`) are placed at the fitted model's real wingtips and tail instead of the procedural wing's.

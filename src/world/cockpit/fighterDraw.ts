@@ -130,3 +130,118 @@ export function drawMfd(ctx: Ctx, w: number, h: number, s: PanelState): void {
     align: 'center',
   })
 }
+
+/** Left MFD: artificial horizon with a pitch ladder, speed, altitude and heading. */
+export function drawMfdAttitude(ctx: Ctx, w: number, h: number, s: PanelState): void {
+  const { t, units } = s
+  ctx.fillStyle = COL.bg
+  ctx.fillRect(0, 0, w, h)
+  const cx = w / 2
+  const cy = h / 2 + 4
+  const r = w * 0.4
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.translate(cx, cy)
+  ctx.rotate(-rad(fin(t.bankDeg)))
+  const py = fin(t.pitchDeg) * 3.2
+  ctx.fillStyle = '#1d5fa8'
+  ctx.fillRect(-r * 2, -r * 2 + py, r * 4, r * 2)
+  ctx.fillStyle = '#6b4a2b'
+  ctx.fillRect(-r * 2, py, r * 4, r * 2)
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(-r, py)
+  ctx.lineTo(r, py)
+  ctx.stroke()
+  for (const d of [-20, -10, 10, 20]) {
+    const y = py - d * 3.2
+    const half = d % 20 === 0 ? 34 : 20
+    ctx.beginPath()
+    ctx.moveTo(-half, y)
+    ctx.lineTo(half, y)
+    ctx.stroke()
+    txt(ctx, String(Math.abs(d)), half + 12, y, { size: 12, color: COL.white, align: 'center' })
+  }
+  ctx.restore()
+  ctx.strokeStyle = '#33414f'
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+  // Fixed aircraft symbol.
+  ctx.strokeStyle = COL.yellow
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.moveTo(cx - 46, cy)
+  ctx.lineTo(cx - 14, cy)
+  ctx.lineTo(cx - 14, cy + 8)
+  ctx.moveTo(cx + 46, cy)
+  ctx.lineTo(cx + 14, cy)
+  ctx.lineTo(cx + 14, cy + 8)
+  ctx.stroke()
+  txt(ctx, 'ADI', w / 2, 14, { size: 15, color: COL.green, align: 'center' })
+  txt(ctx, `${Math.round(speedValue(fin(t.airspeed), units))}`, 12, h - 16, { size: 18, color: COL.green })
+  txt(ctx, `${Math.round(altitudeValue(fin(t.altitude), units))}`, w - 12, h - 16, { size: 18, color: COL.green, align: 'right' })
+}
+
+/** Right MFD: a compass rose with the heading, ground speed and the nearest airport. */
+export function drawMfdNav(ctx: Ctx, w: number, h: number, s: PanelState): void {
+  const { t, units } = s
+  ctx.fillStyle = COL.bg
+  ctx.fillRect(0, 0, w, h)
+  const cx = w / 2
+  const cy = h / 2 + 6
+  const r = w * 0.38
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(-rad(fin(t.headingDeg)))
+  ctx.strokeStyle = '#2a6a46'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.stroke()
+  for (let d = 0; d < 360; d += 10) {
+    const a = rad(d)
+    const len = d % 30 === 0 ? 12 : 6
+    ctx.beginPath()
+    ctx.moveTo(Math.sin(a) * r, -Math.cos(a) * r)
+    ctx.lineTo(Math.sin(a) * (r - len), -Math.cos(a) * (r - len))
+    ctx.stroke()
+    if (d % 90 === 0) txt(ctx, 'NESW'[d / 90], Math.sin(a) * (r - 26), -Math.cos(a) * (r - 26), { size: 16, color: COL.green, align: 'center' })
+    else if (d % 30 === 0) txt(ctx, String(d / 10), Math.sin(a) * (r - 24), -Math.cos(a) * (r - 24), { size: 12, color: COL.dim, align: 'center' })
+  }
+  const near = t.nav.nearest
+  if (near) {
+    const a = rad(near.bearingDeg)
+    const d = clamp(near.distance / 40000, 0.1, 1) * (r - 30)
+    ctx.fillStyle = COL.cyan
+    ctx.fillRect(Math.sin(a) * d - 4, -Math.cos(a) * d - 4, 8, 8)
+  }
+  ctx.restore()
+  ctx.fillStyle = COL.yellow
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - 14)
+  ctx.lineTo(cx + 9, cy + 10)
+  ctx.lineTo(cx, cy + 5)
+  ctx.lineTo(cx - 9, cy + 10)
+  ctx.closePath()
+  ctx.fill()
+  txt(ctx, 'HSD', w / 2, 14, { size: 15, color: COL.green, align: 'center' })
+  txt(ctx, pad3(fin(t.headingDeg)), cx, 36, { size: 16, color: COL.white, align: 'center' })
+  txt(ctx, `GS ${Math.round(speedValue(fin(t.groundSpeed), units))}`, 10, h - 14, { size: 14, color: COL.green })
+  if (near) txt(ctx, near.code, w - 10, h - 14, { size: 14, color: COL.cyan, align: 'right' })
+}
+
+/** The small amber-green data display under the HUD (the "DED"): throttle, N1 and Mach. */
+export function drawDed(ctx: Ctx, w: number, h: number, s: PanelState): void {
+  const { t } = s
+  ctx.fillStyle = '#04100a'
+  ctx.fillRect(0, 0, w, h)
+  const c = '#7dff9e'
+  txt(ctx, `THR ${String(Math.round(fin(t.throttle) * 100)).padStart(3, ' ')}%   N1 ${String(Math.round(fin(t.n1) * 100)).padStart(3, ' ')}%`, 10, h * 0.22, { size: h * 0.2, color: c })
+  txt(ctx, `MACH ${fin(t.mach).toFixed(2)}   G ${fin(t.gForce).toFixed(1)}`, 10, h * 0.5, { size: h * 0.2, color: c })
+  txt(ctx, t.onGround ? 'WOW  BRK ' + Math.round(fin(t.brakes) * 100) + '%' : 'AIRBORNE', 10, h * 0.78, { size: h * 0.2, color: COL.amber })
+}
