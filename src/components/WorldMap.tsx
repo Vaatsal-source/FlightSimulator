@@ -23,6 +23,8 @@ interface MapViewProps {
   canSelect: boolean
   /** Airports whose runway is too short for the chosen aircraft are dimmed. */
   minRunway?: number
+  /** The same for a ship's deck; ships are dimmed when absent. */
+  minDeck?: number
   showAircraft?: boolean
 }
 
@@ -47,7 +49,7 @@ function AirportTooltip({ a, below }: { a: AirportDef; below: boolean }) {
 }
 
 /** The island map drawing, shared by the overlay and the inline preview. */
-export function MapView({ idPrefix = 'map', inline = false, canSelect, minRunway = 0, showAircraft = true }: MapViewProps) {
+export function MapView({ idPrefix = 'map', inline = false, canSelect, minRunway = 0, minDeck, showAircraft = true }: MapViewProps) {
   const t = useTelemetry()
   const airportId = useGameStore((s) => s.airportId)
   const runwayEnd = useGameStore((s) => s.runwayEnd)
@@ -98,7 +100,7 @@ export function MapView({ idPrefix = 'map', inline = false, canSelect, minRunway
       )}
       {AIRPORTS.map((a) => {
         const active = a.id === airportId
-        const short = longestRunway(a) < minRunway
+        const short = longestRunway(a) < (a.class === 'carrier' ? (minRunway > 0 ? (minDeck ?? Infinity) : 0) : minRunway)
         const cls = ['map-airport', active ? 'active' : '', short ? 'short' : '', a.id === hoverId ? 'hover' : '']
         return (
           <g
@@ -188,10 +190,10 @@ export function MapView({ idPrefix = 'map', inline = false, canSelect, minRunway
 }
 
 /** Inline (non-overlay) map for the airport picker. Clicking an airport selects it. */
-export function MapPreview({ minRunway }: { minRunway: number }) {
+export function MapPreview({ minRunway, minDeck }: { minRunway: number; minDeck?: number }) {
   return (
     <div className="map-preview">
-      <MapView inline idPrefix="preview" canSelect minRunway={minRunway} showAircraft={false} />
+      <MapView inline idPrefix="preview" canSelect minRunway={minRunway} minDeck={minDeck} showAircraft={false} />
     </div>
   )
 }

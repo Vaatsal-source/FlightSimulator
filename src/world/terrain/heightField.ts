@@ -23,6 +23,7 @@
 import { APPROACH_CORRIDOR, DEPARTURE_CORRIDOR, RUNWAY, WORLD, type Rect } from '../../config/world'
 import { RING_COURSE } from '../../game/courses'
 import { AIRPORT_SITES, APPROACH_CARVE_BASE, APPROACH_FADE, APPROACH_HALF_WIDTH, APPROACH_LENGTH, APPROACH_SLOPE, FLAT_MARGIN, PAD } from './airportTerrain'
+import { TILE, tileForest, tileRelief01, tileWeight } from './tileTerrain'
 import { erodedFbm2, fbm2, gradNoise2, ridgedGrad2, smoothstep, valueNoise2 } from './noise'
 
 // ---------------------------------------------------------------- helpers
@@ -54,6 +55,7 @@ const S_LAKE = SEED + 61
 const S_ISLE = SEED + 67
 const S_FOREST = SEED + 71
 const S_MOIST = SEED + 73
+const S_TILE = SEED + 79
 
 const R = WORLD.islandRadius
 const HALF_SIZE = WORLD.terrainSize / 2
@@ -358,7 +360,6 @@ function isletCoast(x: number, z: number): number {
 }
 
 const N_SITES = AIRPORT_SITES.length
-
 /**
  * Coarse lookup of the airports whose constraints can touch a point: a bit
  * mask per MASK_CELL square (bit i = AIRPORT_SITES[i]), so the ~all calls far
@@ -507,6 +508,14 @@ export function baseHeightAt(x: number, z: number): number {
 
     const mask = rangeMask(x, z) * smoothstep(600, 6000, cMain) * smoothstep(4500, 11000, r)
     if (mask > 0.002) h += mountainRelief(x, z, mask)
+    // The baked mountain tile: its relief, with a little eroded detail on top (shortest wavelength ~200 m, above the 30 m grid's reach).
+    const tw = tileWeight(x, z) * smoothstep(800, 5000, cMain)
+    if (tw > 0) {
+      const t = tileRelief01(x, z)
+      const e = erodedFbm2(x * (1 / 1500), z * (1 / 1500), 4, S_TILE)
+      const ridge = ridgedGrad2(x * (1 / 900), z * (1 / 900), 3, S_TILE + 3)
+      h += tw * (TILE.amplitude * Math.pow(t, 1.35) + 70 * t * e + 55 * t * ridge)
+    }
     h = carveLakes(x, z, h)
   } else {
     // ---- sea: shelf, then deep water
@@ -531,7 +540,10 @@ export function naturalHeightAt(x: number, z: number): number {
 /** Forest cover 0..1 (clumped woods); shared by tree placement and the ground shader. */
 export function forestAt(x: number, z: number): number {
   const n = fbm2(x * (1 / 2400) + 7.1, z * (1 / 2400) - 3.3, 4, S_FOREST)
-  return smoothstep(-0.08, 0.22, n)
+  const f = smoothstep(-0.08, 0.22, n)
+  // Inside the mountain tile the forest follows its own map: woods in the valleys, bare rock and snow up high.
+  const tw = tileWeight(x, z)
+  return tw > 0 ? f + (tileForest(x, z) - f) * tw : f
 }
 
 /** Dryness 0..1 (dry grass patches); shared by the ground shader and tree types. */

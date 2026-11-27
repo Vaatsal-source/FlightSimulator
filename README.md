@@ -23,7 +23,8 @@ Start cold and dark at the gate, push back, taxi, take off, fly and land, from a
 - **Gate departure:** start cold and dark at the stand, refuel and board through a working jet bridge, stay within weight and balance limits, push back (`T`), start the engines, taxi with ATC and a checklist, and take off
 - **Gate arrival:** land, vacate the runway, taxi in, park on the stand and deplane
 - **Busy airports:** glass terminals with finger piers, gates, parked airliners, ground vehicles, towers, hangars and fuel farms; several have parallel runways; airliners taxi and take off around you
-- **The world:** islands, forests, fields, villages, roads, wind farms and radio masts, with morning, noon, evening and night and clear, overcast or fog
+- **The world:** islands, forests, fields, villages, roads, wind farms and radio masts, with morning, noon, evening and night and clear, overcast or fog. A mountain region in the south-east has real ridges, valleys and forest cover, built from a 3D terrain scene
+- **Aircraft carrier:** a king-sized carrier (about 600 m long, 1.8 times the real Ford class) at anchor off the east coast, listed as the airport *Colossus* (FSCV). Take off from its deck or land on it with the F-22 or the trainer; arresting wires catch a touchdown in the wire zone and stop you, and a touchdown past them is a bolter (go around). Airliners cannot operate from it
 - **Wind:** calm to strong, with gusts, animated windsocks and a HUD readout
 - **Autopilot and landing assist** (press `0` near a runway): speed, heading, altitude and vertical-speed holds, and an approach down the 3° glide path to 100 ft, with a go-around if it is unstable
 - **Landing coach:** tips during the approach, and every touchdown is graded
@@ -51,6 +52,7 @@ Open **Settings** to tune it, and press `F3` in flight to see what is happening.
 
 - **Quality** (Low, Medium, High): shadows, tree and cloud counts, view distance, anti-aliasing and the detail of the airliner models. Medium and High use the high-detail A320 and A220 models; Low uses lighter ones.
 - **Resolution:** *Auto* lowers the render resolution when frames run long (never below 85% on a real GPU) and raises it again when there is room; *Native* always renders at full sharpness.
+- **Smooth cockpit screens:** the live cockpit displays are redrawn a couple per frame in turn, so they do not cause a periodic frame hitch. Terrain and sky share one baked noise texture instead of computing noise per pixel, and the ocean's far waves cost nothing beyond their range.
 - **Auto quality:** off by default. When on, the game also lowers the quality level by itself if it still cannot keep up at the lowest resolution.
 - **No GPU:** if the browser reports software rendering (SwiftShader, llvmpipe and similar), the game starts at a low resolution on the Low quality level. Enabling hardware acceleration in the browser is the biggest single improvement.
 - **F3** shows frames per second, the slowest frames, draw calls, triangles, the quality level and render scale, GPU time per frame (where the browser can measure it) and the graphics card's name.
@@ -181,7 +183,7 @@ The free Render plan sleeps after about 15 minutes idle; the first connection af
 | `npm run typecheck` | Type-check without building         |
 | `npm run lint`      | Lint with ESLint                    |
 
-The 3D models in `public/models` are built from the original downloads (kept in `assets-src/`, which is git-ignored and not deployed) by `node scripts/prepare-f22.mjs` and `node scripts/prepare-aircraft.mjs [id]`. You only need to run them to change a model.
+The 3D models in `public/models` are built from the original downloads (kept in `assets-src/`, which is git-ignored and not deployed) by `node scripts/prepare-f22.mjs`, `node scripts/prepare-aircraft.mjs [id]` and `node scripts/prepare-carrier.mjs`. The mountain scenery is baked by `node scripts/prepare-terrain-tile.mjs` into `public/terrain/` and `src/world/terrain/tileData.ts`. You only need to run them to change a model.
 
 ## Project layout
 
@@ -200,7 +202,8 @@ src/
 └── state/        Zustand stores
 server/           Multiplayer room server (Node + ws)
 scripts/          Build-time tools that shrink the 3D models for the web
-public/models/    Web-ready 3D models and their licences
+public/models/    Web-ready 3D models and their licences (aircraft, carrier, traffic)
+public/terrain/   Baked colour map for the mountain scenery
 ```
 
 ## Contributing
@@ -225,7 +228,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an i
 - Airliner and business-jet exteriors, resized for the web by `scripts/prepare-aircraft.mjs`: Airbus A220-300 by CreditFreeStudio (Sketchfab Standard licence); Airbus A320-200 by Dlourine ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); Airbus A350-1000 and Bombardier Learjet 60 (used for the Global 8000) by OUTPISTON ([CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), non-commercial, share-alike). Licence texts are in `public/models/aircraft/`.
 - Main menu background (`public/BackdropImageMenu.jpg`): a screenshot of another product, supplied for personal use. Replace it with an image you have the rights to before publishing the game publicly.
 - AI traffic airliners (A320, A350, A380, B737, B787): [amvlab aircraft-models](https://github.com/amvlab/aircraft-models), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [public/models/traffic/CREDITS.md](public/models/traffic/CREDITS.md).
-
-## License
-
-[MIT](LICENSE) © Singey Dorje
+- Aircraft carrier: This work is based on "Gerald R Ford aircraft Carrier" (https://sketchfab.com/3d-models/gerald-r-ford-aircraft-carrier-562bf516e1494df38d8f222504dc798b) by waelXcm (https://sketchfab.com/waelXcm), licensed [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Scaled up 1.8 times and reduced from 116k triangles and 60 MB to 70k triangles and 8 MB by `scripts/prepare-carrier.mjs`. See [public/models/carrier/LICENSE.txt](public/models/carrier/LICENSE.txt).
+- Mountain, forest and valley scenery: This work is based on "terrain with mountains, rivers and forest" (https://sketchfab.com/3d-models/terrain-with-mountains-rivers-and-forest-de69f9aa593447d9909c9f46b0f6d1f0) by n-malmberg (https://sketchfab.com/n-malmberg), licensed [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Baked into a height map, forest mask and colour map by `scripts/prepare-terrain-tile.mjs`. See [public/terrain/LICENSE-tile.txt](public/terrain/LICENSE-tile.txt).

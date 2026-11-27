@@ -82,6 +82,7 @@ export class LandingAssist {
   private readonly controller: AutopilotController
   private readonly approachSpeed: number
   private readonly minRunway: number
+  private readonly minDeck: number | undefined
   private end: RunwayEnd | null = null
   private unstableFor = 0
   private vsTarget = 0
@@ -102,6 +103,7 @@ export class LandingAssist {
     const info = getAircraft(aircraftId)
     this.approachSpeed = info.speeds.approach
     this.minRunway = info.minRunway
+    this.minDeck = info.minDeck
   }
 
   get active(): boolean {
@@ -115,7 +117,7 @@ export class LandingAssist {
   engage(s: AircraftState, prefer?: RunwayEnd): string | null {
     if (s.onGround || s.heightAboveGround < MIN_HEIGHT) return 'Landing assist needs 300 ft above the ground'
     const { x, y, z } = s.position
-    const g = approachGuidance(x, y, z, s.headingDeg, { prefer, minLength: this.minRunway })
+    const g = approachGuidance(x, y, z, s.headingDeg, { prefer, minLength: this.minRunway, minDeckLength: this.minDeck })
     if (!g) {
       return approachGuidance(x, y, z, s.headingDeg)
         ? 'Landing assist: that runway is too short for this aircraft'

@@ -14,6 +14,7 @@
 
 import { WORLD } from '../../config/world'
 import type { SurfaceType, TerrainSampler } from '../../simulation/types'
+import { CARRIER_DECK, onCarrierDeck } from '../../config/carrier'
 import { isPavedAt } from './airportTerrain'
 import { WATER_THRESHOLD, naturalHeightAt } from './heightField'
 
@@ -75,11 +76,12 @@ export function createTerrainSampler(): TerrainSampler & { rawHeightAt(x: number
   const grid = createGridHeights()
   return {
     heightAt(x: number, z: number): number {
+      if (onCarrierDeck(x, z)) return CARRIER_DECK.height
       const h = triangulatedHeight(grid, x, z)
       return h > 0 ? h : 0
     },
     surfaceAt(x: number, z: number): SurfaceType {
-      if (isPavedAt(x, z)) return 'paved'
+      if (onCarrierDeck(x, z) || isPavedAt(x, z)) return 'paved'
       return triangulatedHeight(grid, x, z) <= WATER_THRESHOLD ? 'water' : 'grass'
     },
     rawHeightAt(x: number, z: number): number {

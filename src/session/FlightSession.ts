@@ -12,11 +12,12 @@ import type { AutopilotTargets, TargetField } from '../autopilot/types'
 import { getAircraftConfig } from '../config/aircraft'
 import type { AircraftId } from '../config/aircraftCatalog'
 import { GRAVITY } from '../simulation/atmosphere'
-import { approachGuidance, getRunwayEnd, nearestAirport } from '../game/airportGeometry'
+import { approachGuidance, getRunwayEnd, headingVector, nearestAirport } from '../game/airportGeometry'
 import { createChallenge, type Challenge } from '../game/challenges'
 import { newTurnaround, type GateServices } from '../game/gateServices'
 import { ArrivalOps, planArrivalRoute } from '../game/arrivalOps'
 import { AIRPORTS } from '../config/airports'
+import { ARRESTING_GEAR, CARRIER_ID, onCarrierDeck } from '../config/carrier'
 import { GroundTraffic, type TrafficPose } from '../game/groundTraffic'
 import { PUSH_DISTANCE, Pushback, pushbackTarget } from '../game/pushback'
 import { windFor, type WindSetting, type WindState } from '../game/wind'
@@ -210,7 +211,13 @@ export class FlightSession {
 
   /** Back to the spawn of `mode` at `place` with no leftover state. */
   reset(mode: GameMode = this.mode, place: FlightPlace = this.place): void {
+    // A ship has no gates or taxiways: a gate start becomes a take-off from the deck, an arrival a landing on it.
+    if (place.airportId === CARRIER_ID) {
+      if (mode === 'gate') mode = 'takeoff'
+      else if (mode === 'arrival') mode = 'landing'
+    }
     this.mode = mode
+    this.arrested = false
     this.place = place
     // Wind first, so an airborne spawn keeps its airspeed.
     this.applyWind(0)
@@ -604,7 +611,43 @@ export class FlightSession {
       this.lastTouchdown = { sink: Math.max(0, -prev.verticalSpeed), simTime: this.physics.state.simTime }
     }
     this.keyboard.syncGear(this.physics.state.controls.gear)
+    this.updateArrestingGear(dt)
     this.challenge.update(this.physics.state, dt)
+  }
+
+  /** The carrier's arresting wires: a touchdown in their zone is caught and stopped; a touchdown past them is a bolter. */
+  private arrested = false
+  private updateArrestingGear(dt: number): void {
+    if (this.place.airportId !== CARRIER_ID) return
+    const s = this.physics.state
+    const v = s.velocity
+    if (s.onGround && !this.physics.previousState.onGround && onCarrierDeck(s.position.x, s.position.z)) {
+      const end = getRunwayEnd(this.place.airportId, this.place.runwayEnd)
+      const d = headingVector(end.headingDeg)
+      const along = (s.position.x - end.threshold.x) * d.x + (s.position.z - end.threshold.z) * d.z
+      const speed = Math.hypot(v.x, v.z)
+      if (speed > ARRESTING_GEAR.minSpeed && along > ARRESTING_GEAR.from && along < ARRESTING_GEAR.to) {
+        this.arrested = true
+        useAutopilotStore.setState({ message: 'Wire caught: arrested landing' })
+      } else if (speed > ARRESTING_GEAR.minSpeed) {
+        useAutopilotStore.setState({ message: 'Bolter: missed the wires, throttle up and go around' })
+      }
+    }
+    if (!this.arrested) return
+    if (!s.onGround || !onCarrierDeck(s.position.x, s.position.z)) {
+      this.arrested = false
+      return
+    }
+    const speed = Math.hypot(v.x, v.z)
+    if (speed < 1.5) {
+      v.x = 0
+      v.z = 0
+      this.arrested = false
+      return
+    }
+    const k = Math.max(0, speed - ARRESTING_GEAR.decel * dt) / speed
+    v.x *= k
+    v.z *= k
   }
 
   /** N starts or stops the engines (a shutdown only when stopped on the ground), K toggles the parking brake. */

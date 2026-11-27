@@ -194,6 +194,13 @@ export function airportLayout(a: AirportDef): AirportLayout {
   const cached = layoutCache.get(a.id)
   if (cached) return cached
   const rws = airportRunways(a)
+  if (a.class === 'carrier') {
+    // A ship has a deck, nothing else: no taxiway, connectors or apron.
+    const deck = rws[0].rect
+    const only = { runways: [deck], taxiway: deck, connectors: [], apron: deck, paved: [deck], flatZones: [deck] }
+    layoutCache.set(a.id, only)
+    return only
+  }
   const primary = rws[0].def
   const h = primary.headingDeg
   const big = a.class === 'international'
@@ -313,6 +320,8 @@ export interface ApproachOptions {
   prefer?: RunwayEnd
   /** Skip runways shorter than this (m). */
   minLength?: number
+  /** The same for a ship's deck (m); a carrier is skipped when this is absent. */
+  minDeckLength?: number
 }
 
 /**
@@ -330,7 +339,10 @@ export function approachGuidance(
   let bestScore = Infinity
   for (const a of AIRPORTS) {
     for (const end of runwayEnds(a)) {
-      if (options.minLength !== undefined && end.runway.def.length < options.minLength) continue
+      if (options.minLength !== undefined) {
+        const need = end.airport.class === 'carrier' ? (options.minDeckLength ?? Infinity) : options.minLength
+        if (end.runway.def.length < need) continue
+      }
       const g = guidanceTo(end, x, y, z)
       if (g.distance < -end.runway.def.length || g.distance > APPROACH_RANGE) continue
       if (Math.abs(g.lateral) > Math.max(1500, g.distance * 0.25)) continue

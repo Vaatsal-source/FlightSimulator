@@ -18,6 +18,24 @@ import { snapWaterCenter } from './envMath'
 /** Side of the water square (m). Covers the 100 km world and the horizon beyond the 60 km far plane. */
 const WATER_SIZE = 140000
 
+/** The sea's waves: direction, wavelength (m), height (m) and the distances over which each fades out. */
+const WAVES = [
+  { dir: [1.0, 0.35], len: 90, amp: 0.9, from: 4000, to: 12000 },
+  { dir: [-0.4, 1.0], len: 37, amp: 0.36, from: 1800, to: 6000 },
+  { dir: [0.8, -0.7], len: 15, amp: 0.14, from: 700, to: 2500 },
+  { dir: [-0.9, -0.3], len: 6.3, amp: 0.05, from: 250, to: 900 },
+  { dir: [0.2, 1.0], len: 2.6, amp: 0.02, from: 80, to: 350 },
+] as const
+
+const f = (n: number) => n.toFixed(6)
+const WAVE_CODE = WAVES.map((w) => {
+  const l = Math.hypot(w.dir[0], w.dir[1])
+  const k = (2 * Math.PI) / w.len
+  const speed = Math.sqrt(9.81 * k)
+  const fade = `(1.0 - smoothstep(${f(w.from)}, ${f(w.to)}, dist))`
+  return `  if (dist < ${f(w.to)}) s += wave(p, vec2(${f(w.dir[0] / l)}, ${f(w.dir[1] / l)}), ${f(k)}, ${f(speed)}, ${f(w.amp)} * ${fade});`
+}).join('\n')
+
 const VERTEX = /* glsl */ `
 #include <common>
 #include <fog_pars_vertex>
@@ -49,12 +67,10 @@ uniform vec3 uZenith;
 uniform float uLight;
 varying vec3 vWorld;
 
-// Slope (d height / d xz) of one sine wave of the given wavelength and height.
-vec2 wave(vec2 p, vec2 dir, float len, float amp, float fade) {
-  float k = 6.2831853 / len;
-  float w = sqrt(9.81 * k);
-  float ph = dot(dir, p) * k + uTime * w;
-  return dir * (amp * k * cos(ph) * fade);
+// Slope (d height / d xz) of one sine wave: the direction, wavenumber k, angular speed w (both constants, worked out in JS, not per pixel)
+// and the amplitude already faded for distance.
+vec2 wave(vec2 p, vec2 dir, float k, float w, float amp) {
+  return dir * (amp * k * cos(dot(dir, p) * k + uTime * w));
 }
 
 void main() {
@@ -63,13 +79,9 @@ void main() {
   vec3 V = toCam / dist;
   vec2 p = vWorld.xz;
 
-  // Fine octaves fade out with distance, so the far sea does not shimmer.
+  // Fine octaves fade out with distance, so the far sea does not shimmer; beyond their range they cost nothing at all.
   vec2 s = vec2(0.0);
-  s += wave(p, normalize(vec2(1.0, 0.35)), 90.0, 0.9, 1.0 - smoothstep(4000.0, 12000.0, dist));
-  s += wave(p, normalize(vec2(-0.4, 1.0)), 37.0, 0.36, 1.0 - smoothstep(1800.0, 6000.0, dist));
-  s += wave(p, normalize(vec2(0.8, -0.7)), 15.0, 0.14, 1.0 - smoothstep(700.0, 2500.0, dist));
-  s += wave(p, normalize(vec2(-0.9, -0.3)), 6.3, 0.05, 1.0 - smoothstep(250.0, 900.0, dist));
-  s += wave(p, normalize(vec2(0.2, 1.0)), 2.6, 0.02, 1.0 - smoothstep(80.0, 350.0, dist));
+${WAVE_CODE}
 
   vec3 N = normalize(vec3(-s.x, 1.0, -s.y));
   float ndv = clamp(dot(N, V), 0.0, 1.0);
@@ -85,11 +97,17 @@ void main() {
   vec3 col = mix(body, sky, fres);
 
   float sd = max(dot(R, uSunDir), 0.0) * step(0.0, R.y);
-  float glint = pow(sd, 700.0) * 6.0 + pow(sd, 70.0) * 0.4;
+  // Sun glitter: the sharp core is kept but capped, so it sparkles instead of burning white patches into the sea.
+  float sd2 = sd * sd;
+  float sd4 = sd2 * sd2;
+  float sd8 = sd4 * sd4;
+  float sd64 = sd8 * sd8 * sd8 * sd8 * sd8 * sd8 * sd8 * sd8;
+  float glint = min(pow(sd, 700.0) * 4.0, 1.6) + sd64 * sd8 * 0.35;
   col += uSunColor * glint;
 
-  // Slightly see-through near the camera so the seabed tints the coast.
-  float alpha = clamp(0.82 + 0.18 * fres + smoothstep(1500.0, 8000.0, dist) * 0.18, 0.0, 1.0);
+  // Slightly see-through only right next to the camera, so the seabed tints the shallows. Further out the water is solid:
+  // the sea floor is coarse chunks there, and through even a thin film they showed as dark square patches.
+  float alpha = clamp(mix(0.84, 1.0, smoothstep(120.0, 600.0, dist)) + 0.16 * fres, 0.0, 1.0);
   alpha = max(alpha, clamp(glint, 0.0, 1.0));
 
   gl_FragColor = vec4(col, alpha);

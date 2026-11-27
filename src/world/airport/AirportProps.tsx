@@ -97,7 +97,7 @@ export function AirportProps() {
   const { dressings, material, geoms } = useMemo(() => {
     const material = new MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.1 })
     const geoms = new Map<PropKind, BufferGeometry>()
-    const dressings = AIRPORTS.filter((a) => a.class !== 'short').map((a) => buildDressing(a, material, geoms))
+    const dressings = AIRPORTS.filter((a) => a.class !== 'short' && a.class !== 'carrier').map((a) => buildDressing(a, material, geoms))
     return { dressings, material, geoms }
   }, [])
 

@@ -58,6 +58,8 @@ export interface AircraftInfo {
   speeds: AircraftSpeeds
   /** Runway length (m) needed for a comfortable take-off at game weight; shorter runways warn. */
   minRunway: number
+  /** Carrier-capable aircraft only: the deck length (m) they can take off from and land on. Absent: not for ships. */
+  minDeck?: number
   /** Flap lever setting (0..1) for take-off and landing spawns. */
   takeoffFlaps: number
   landingFlaps: number
@@ -96,6 +98,7 @@ export const AIRCRAFT: readonly AircraftInfo[] = [
     ],
     speeds: { stallClean: 27, rotate: 28, approach: 33, maxOperating: 70, maxMach: null },
     minRunway: 500,
+    minDeck: 380,
     takeoffFlaps: 1 / 3,
     landingFlaps: 1 / 3,
     camera: { chaseDistance: 14, chaseHeight: 3.5 },
@@ -122,6 +125,7 @@ export const AIRCRAFT: readonly AircraftInfo[] = [
     ],
     speeds: { stallClean: 62, rotate: 72, approach: 75, maxOperating: 410, maxMach: 2.25 },
     minRunway: 1200,
+    minDeck: 400,
     takeoffFlaps: 0,
     landingFlaps: 0,
     camera: { chaseDistance: 26, chaseHeight: 6 },
@@ -307,4 +311,9 @@ export function getAircraft(id: AircraftId): AircraftInfo {
   const a = AIRCRAFT.find((x) => x.id === id)
   if (!a) throw new Error(`Unknown aircraft: ${id}`)
   return a
+}
+
+/** Runway length (m) an aircraft needs at an airport of this class; Infinity where it cannot operate (airliners on a ship). */
+export function runwayNeeded(aircraft: Pick<AircraftInfo, 'minRunway' | 'minDeck'>, airportClass: string): number {
+  return airportClass === 'carrier' ? (aircraft.minDeck ?? Infinity) : aircraft.minRunway
 }

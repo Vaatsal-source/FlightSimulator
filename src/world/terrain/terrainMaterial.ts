@@ -6,8 +6,9 @@
  * fades in near the camera.
  */
 
-import { Color, MeshLambertMaterial, Vector2 } from 'three'
+import { Color, LinearMipmapLinearFilter, MeshLambertMaterial, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector4 } from 'three'
 import { AIRPORTS } from '../../config/airports'
+import { TILE } from './tileTerrain'
 import { getNoiseTexture, NOISE_GLSL } from '../environment/noiseTexture'
 
 const PALETTE = {
@@ -63,6 +64,9 @@ uniform vec3 uRock;
 uniform vec3 uRockDark;
 uniform vec3 uSnow;
 uniform vec2 uAirports[AIRPORT_COUNT];
+uniform sampler2D uTileTex;
+uniform vec4 uTileBox;
+uniform float uTileOn;
 
 float tHash(vec2 p) {
   p = mod(p, 4096.0);
@@ -140,6 +144,17 @@ const FRAGMENT_COLOR = /* glsl */ `
       hedge *= 1.0 - smoothstep(2500.0, 9000.0, dist);
       crop = mix(crop, vec3(0.14, 0.26, 0.11), hedge * 0.75);
       col = mix(col, crop * (0.92 + 0.16 * macro), fieldW * 0.9);
+    }
+  }
+
+  // The mountain tile: the scene's own painted ground (forest, meadow, rock, snow, river beds) over the procedural colours.
+  if (uTileOn > 0.5 && h > 2.0) {
+    vec2 tq = (wp - uTileBox.xy) / (2.0 * uTileBox.z) + 0.5;
+    vec2 ed = min(tq, 1.0 - tq) * 2.0 * uTileBox.z;
+    float tw = smoothstep(0.0, uTileBox.w, min(ed.x, ed.y));
+    if (tw > 0.0) {
+      vec3 tc = texture2D(uTileTex, tq).rgb;
+      col = mix(col, tc * 1.08, tw * 0.88);
     }
   }
 
@@ -226,9 +241,29 @@ export function createTerrainMaterial(detail: 'lite' | 'mid' | 'full' = 'full'):
   for (const [name, hex] of Object.entries(PALETTE)) uniforms[name] = { value: new Color(hex) }
   // Animated from outside: the clock and how strong the cloud shadows are (weather and time of day).
   const live = { uTime: { value: 0 }, uCloudShade: { value: 0.16 } }
+  const tile = { uTileTex: { value: null as Texture | null }, uTileBox: { value: new Vector4(TILE.cx, TILE.cz, TILE.half, TILE.fade) }, uTileOn: { value: 0 } }
+  // The tile's colour map streams in after the terrain starts; until it arrives the procedural colours show.
+  let disposed = false
+  new TextureLoader().load(`${import.meta.env.BASE_URL}terrain/tile-colour.webp`, (tex) => {
+    if (disposed) {
+      tex.dispose()
+      return
+    }
+    tex.flipY = false
+    tex.colorSpace = SRGBColorSpace
+    tex.minFilter = LinearMipmapLinearFilter
+    tex.anisotropy = 4
+    tex.needsUpdate = true
+    tile.uTileTex.value = tex
+    tile.uTileOn.value = 1
+  })
+  material.addEventListener('dispose', () => {
+    disposed = true
+    tile.uTileTex.value?.dispose()
+  })
   material.userData.live = live
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms, live)
+    Object.assign(shader.uniforms, uniforms, live, tile)
     shader.uniforms.uNoiseTex = { value: getNoiseTexture() }
     shader.uniforms.uAirports ={ value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
     shader.vertexShader = shader.vertexShader
@@ -241,6 +276,6 @@ ${VERTEX_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${FRAGMENT_COLOR}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAGMENT_NORMAL}`)
   }
-  material.customProgramCacheKey = () => `flysim-terrain-v8-${detail}`
+  material.customProgramCacheKey = () => `flysim-terrain-v9-${detail}`
   return material
 }

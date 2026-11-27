@@ -116,6 +116,7 @@ function build(): Built {
   const col = new Color()
 
   for (const a of AIRPORTS) {
+    if (a.class === 'carrier') continue // the ship brings its own deck (Carrier.tsx)
     const plan = buildAirportPlan(a)
     const group = new Group()
     group.name = `airport-${a.id}`

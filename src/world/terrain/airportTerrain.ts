@@ -24,6 +24,7 @@ export const AIRPORT_BLEND_BY_CLASS: Record<AirportClass, number> = {
   military: 500,
   regional: 500,
   short: 400,
+  carrier: 0,
 }
 
 /** Approach surface: out to this distance from each threshold (m)... */
@@ -121,7 +122,8 @@ export function buildSite(a: AirportDef): AirportSite {
   }
 }
 
-export const AIRPORT_SITES: readonly AirportSite[] = AIRPORTS.map(buildSite)
+// A carrier sits on the sea: it needs no plateau, blend or approach carving in the ground.
+export const AIRPORT_SITES: readonly AirportSite[] = AIRPORTS.filter((a) => a.class !== 'carrier').map(buildSite)
 const N_SITES = AIRPORT_SITES.length
 
 /** Approach-surface ceiling (m) at `distance` metres out from a threshold (the spec limit, not the carve). */

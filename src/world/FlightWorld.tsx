@@ -5,6 +5,7 @@ import { AircraftModel } from './aircraft/AircraftModel'
 import { Airports } from './airport/Airports'
 import { AirportProps } from './airport/AirportProps'
 import { Windsocks } from './airport/Windsocks'
+import { Carrier } from './airport/Carrier'
 import { GroundTraffic } from './traffic/GroundTraffic'
 import { JetBridge } from './airport/JetBridge'
 import { TaxiRoute } from './airport/TaxiRoute'
@@ -63,6 +64,7 @@ function WorldContent({
       <Airports shadows={profile.shadows} />
       <AirportProps />
       <Windsocks />
+      <Carrier />
       <GroundTraffic />
       <TaxiRoute />
       <JetBridge />

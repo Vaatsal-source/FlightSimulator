@@ -11,7 +11,7 @@
  * direction of the lower-numbered runway end (e.g. 90 for runway 09/27).
  */
 
-export type AirportClass = 'international' | 'regional' | 'short' | 'military'
+export type AirportClass = 'international' | 'regional' | 'short' | 'military' | 'carrier'
 
 export interface RunwayDef {
   /** Direction of travel when using the lower-numbered end, 0..180 (deg). */
@@ -45,7 +45,10 @@ export const AIRPORT_CLASS_LABEL: Record<AirportClass, string> = {
   regional: 'Regional',
   short: 'Short field',
   military: 'Air base',
+  carrier: 'Aircraft carrier',
 }
+
+import { CARRIER_DECK, CARRIER_DECK_CENTER, CARRIER_HEADING_DEG, CARRIER_ID } from './carrier'
 
 /** The original airport; spawns, challenges and the ring course default to it. */
 export const HOME_AIRPORT_ID = 'central'
@@ -173,6 +176,15 @@ export const AIRPORTS: readonly AirportDef[] = [
       { headingDeg: 0, length: 1600, width: 30 },
       { headingDeg: 90, length: 900, width: 23, along: 480, across: 0 },
     ],
+  },
+  {
+    id: CARRIER_ID,
+    code: 'FSCV',
+    name: 'Colossus (carrier)',
+    class: 'carrier',
+    center: { x: CARRIER_DECK_CENTER.x, z: CARRIER_DECK_CENTER.z },
+    elevation: CARRIER_DECK.height,
+    runways: [{ headingDeg: CARRIER_HEADING_DEG, length: CARRIER_DECK.length, width: CARRIER_DECK.width }],
   },
 ]
 

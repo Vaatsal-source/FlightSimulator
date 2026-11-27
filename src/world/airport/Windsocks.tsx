@@ -66,7 +66,7 @@ export function Windsocks() {
     const poleMat = new MeshStandardMaterial({ color: 0xd9d9d9, roughness: 0.6 })
     const pole = new Mesh(poleGeo, poleMat)
     return {
-      socks: AIRPORTS.map((a) => buildSock(a, geos, mats, pole)),
+      socks: AIRPORTS.filter((a) => a.class !== 'carrier').map((a) => buildSock(a, geos, mats, pole)),
       disposables: [...geos, ...mats, poleGeo, poleMat],
     }
   }, [])

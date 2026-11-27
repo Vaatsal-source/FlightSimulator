@@ -1,4 +1,4 @@
-import { getAircraft } from '../config/aircraftCatalog'
+import { getAircraft, runwayNeeded } from '../config/aircraftCatalog'
 import { AIRPORTS, AIRPORT_CLASS_LABEL, getAirport } from '../config/airports'
 import { longestRunway, runwayEnds } from '../game/airportGeometry'
 import { useGameStore } from '../state/gameStore'
@@ -23,13 +23,14 @@ export function AirportPicker() {
         <span className="note">Click an airport on the map, then a runway end</span>
       </div>
       <div className="picker-body">
-        <MapPreview minRunway={aircraft.minRunway} />
+        <MapPreview minRunway={aircraft.minRunway} minDeck={aircraft.minDeck} />
         <div className="picker-side">
           <div className="airport-list" role="radiogroup" aria-label="Airport">
             {AIRPORTS.map((a) => {
               const longest = longestRunway(a)
               const active = a.id === airportId
-              const short = longest < aircraft.minRunway
+              const needed = runwayNeeded(aircraft, a.class)
+              const short = longest < needed
               return (
                 <button
                   key={a.id}
@@ -47,8 +48,9 @@ export function AirportPicker() {
                   </span>
                   {short && (
                     <span className="runway-warning" data-testid={`runway-warning-${a.code}`}>
-                      Runway {formatRunwayLength(longest, units)} — {shortAircraftName(aircraft.name)} needs{' '}
-                      {formatRunwayLength(aircraft.minRunway, units)}
+                      {needed === Infinity
+                        ? `${shortAircraftName(aircraft.name)} cannot operate from a ship`
+                        : `Runway ${formatRunwayLength(longest, units)} — ${shortAircraftName(aircraft.name)} needs ${formatRunwayLength(needed, units)}`}
                     </span>
                   )}
                 </button>
@@ -60,7 +62,7 @@ export function AirportPicker() {
             <div className="seg" role="radiogroup" aria-label="Runway end">
               {ends.map((e) => {
                 const length = e.runway.def.length
-                const cls = ['seg-btn', e.designator === runwayEnd ? 'active' : '', length < aircraft.minRunway ? 'short' : '']
+                const cls = ['seg-btn', e.designator === runwayEnd ? 'active' : '', length < runwayNeeded(aircraft, current.class) ? 'short' : '']
                 return (
                   <button
                     key={e.designator}

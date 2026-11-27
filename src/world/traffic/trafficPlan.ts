@@ -188,7 +188,7 @@ export class TrafficPlanner {
   constructor(opts: PlannerOptions) {
     this.seed = opts.seed ?? 1
     this.heightAt = opts.heightAt
-    this.airports = (opts.airports ?? AIRPORTS).filter((a) => this.usableEnds(a).length > 0)
+    this.airports = (opts.airports ?? AIRPORTS).filter((a) => a.class !== 'carrier' && this.usableEnds(a).length > 0)
   }
 
   private usableEnds(a: AirportDef): RunwayEnd[] {
