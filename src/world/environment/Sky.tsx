@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { BackSide, Mesh, ShaderMaterial, SphereGeometry } from 'three'
 import type { TimeOfDay, Weather } from '../types'
+import { getNoiseTexture, NOISE_GLSL } from './noiseTexture'
 import { displayColor, environmentFor, SKY_RADIUS } from './constants'
 
 const VERTEX = /* glsl */ `
@@ -27,12 +28,8 @@ float h21(vec2 p) {
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
-float n2(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = p - i;
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y);
-}
+${NOISE_GLSL}
+float n2(vec2 p) { return tNoise(p); }
 void main() {
   vec3 d = normalize(vDir);
   float up = max(d.y, 0.0);
@@ -91,6 +88,7 @@ export function Sky({ timeOfDay, weather = 'clear', detail = 'full' }: { timeOfD
         uStars: { value: 0 },
         uCirrus: { value: detail === 'lite' ? 0 : 1 },
         uTime: { value: 0 },
+        uNoiseTex: { value: getNoiseTexture() },
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,

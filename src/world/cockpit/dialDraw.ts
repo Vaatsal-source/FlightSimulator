@@ -57,7 +57,7 @@ function needle(ctx: Ctx, cx: number, cy: number, deg: number, len: number, colo
   ctx.fill()
 }
 
-function airspeed(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function airspeed(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   const { units, speeds } = s
   face(ctx, cx, cy)
   const imperial = units === 'imperial'
@@ -78,7 +78,7 @@ function airspeed(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   needle(ctx, cx, cy, -140 + (clamp(speedValue(s.t.airspeed, units), 0, max) / max) * 280, R - 30)
 }
 
-function attitude(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function attitude(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   face(ctx, cx, cy)
   const ppd = 3.4
   const p = clamp(fin(s.t.pitchDeg), -90, 90)
@@ -130,7 +130,7 @@ function attitude(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   ctx.fillRect(cx - 4, cy - 4, 8, 8)
 }
 
-function altimeter(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function altimeter(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   face(ctx, cx, cy)
   const v = altitudeValue(s.t.altitude, s.units)
   const wrap = (x: number, m: number) => ((x % m) + m) % m
@@ -140,7 +140,7 @@ function altimeter(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   needle(ctx, cx, cy, (wrap(v, 1000) / 1000) * 360, R - 30)
 }
 
-function heading(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function heading(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   face(ctx, cx, cy)
   const h = fin(s.t.headingDeg)
   ctx.save()
@@ -176,7 +176,7 @@ function heading(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   ctx.fill()
 }
 
-function vsi(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function vsi(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   face(ctx, cx, cy)
   const imperial = s.units === 'imperial'
   const max = imperial ? 2000 : 10
@@ -197,7 +197,7 @@ function vsi(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   needle(ctx, cx, cy, ang(v), R - 30)
 }
 
-function tach(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
+export function tach(ctx: Ctx, cx: number, cy: number, s: PanelState): void {
   face(ctx, cx, cy)
   const a = (v: number) => -135 + (v / 3000) * 270
   arc(ctx, cx, cy, R - 14, a(1500), a(2500), '#35c46a', 9)

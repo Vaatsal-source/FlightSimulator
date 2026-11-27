@@ -8,6 +8,7 @@
 
 import { Color, MeshLambertMaterial, Vector2 } from 'three'
 import { AIRPORTS } from '../../config/airports'
+import { getNoiseTexture, NOISE_GLSL } from '../environment/noiseTexture'
 
 const PALETTE = {
   uSeabedDeep: 0x2d5a5c,
@@ -69,17 +70,7 @@ float tHash(vec2 p) {
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
-
-float tNoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = p - i;
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  float a = tHash(i);
-  float b = tHash(i + vec2(1.0, 0.0));
-  float c = tHash(i + vec2(0.0, 1.0));
-  float d = tHash(i + vec2(1.0, 1.0));
-  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
+${NOISE_GLSL}
 `
 
 const FRAGMENT_COLOR = /* glsl */ `
@@ -238,7 +229,8 @@ export function createTerrainMaterial(detail: 'lite' | 'mid' | 'full' = 'full'):
   material.userData.live = live
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms, live)
-    shader.uniforms.uAirports = { value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
+    shader.uniforms.uNoiseTex = { value: getNoiseTexture() }
+    shader.uniforms.uAirports ={ value: AIRPORTS.map((a) => new Vector2(a.center.x, a.center.z)) }
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
 #define AIRPORT_COUNT ${AIRPORTS.length}
@@ -249,6 +241,6 @@ ${VERTEX_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>\n${FRAGMENT_COLOR}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAGMENT_NORMAL}`)
   }
-  material.customProgramCacheKey = () => `flysim-terrain-v7-${detail}`
+  material.customProgramCacheKey = () => `flysim-terrain-v8-${detail}`
   return material
 }

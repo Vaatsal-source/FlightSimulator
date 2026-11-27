@@ -220,6 +220,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more detail. Found a bug or have an i
 
 ## Credits
 
+- F-22 cockpit: an F-16-inspired interior generated for this project (no third-party licence); see `scripts/prepare-fighter-cockpit.mjs`.
 - F-22 exterior: "F-22 Raptor - Fighter Jet - Free" by bohmerang (https://sketchfab.com/3d-models/f-22-raptor-fighter-jet-free-508de5c48845456bb033fb267ebe1d1e), licensed [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). **Non-commercial use only**, and modified versions must keep the same licence; the textures were resized for the web (`scripts/prepare-f22.mjs`). See [public/models/f22/LICENSE.txt](public/models/f22/LICENSE.txt).
 - Airliner and business-jet exteriors, resized for the web by `scripts/prepare-aircraft.mjs`: Airbus A220-300 by CreditFreeStudio (Sketchfab Standard licence); Airbus A320-200 by Dlourine ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); Airbus A350-1000 and Bombardier Learjet 60 (used for the Global 8000) by OUTPISTON ([CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), non-commercial, share-alike). Licence texts are in `public/models/aircraft/`.
 - Main menu background (`public/BackdropImageMenu.jpg`): a screenshot of another product, supplied for personal use. Replace it with an image you have the rights to before publishing the game publicly.

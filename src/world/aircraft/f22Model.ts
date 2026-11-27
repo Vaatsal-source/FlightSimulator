@@ -4,7 +4,7 @@
  * afterburner nozzles and lights. Loaded once and shared; until it arrives (or if it cannot load) the procedural body shows.
  */
 
-import { Group, Mesh, MeshStandardMaterial, type Material, type Object3D } from 'three'
+import { DoubleSide, FrontSide, Group, Mesh, MeshStandardMaterial, type Material, type Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { JetAssembly } from './jetKit'
 
@@ -76,10 +76,20 @@ export function attachPhotoBody(asm: JetAssembly, alsoHide: Object3D[] = []): vo
     wrap.add(body)
     asm.root.add(wrap)
     for (const o of proceduralBody) o.visible = false
-    // From the cockpit the eye sits inside the airframe: its skin is not drawn there (the deck has its own canopy bows).
+    // From the cockpit the eye sits inside the airframe. Its outside faces only are drawn there (wings, spine and tail show when
+    // you look back, the skin round you does not), and the model's own canopy and interior give way to the deck's.
+    const inner: Mesh[] = []
+    const skins: MeshStandardMaterial[] = []
+    body.traverse((o) => {
+      const mesh = o as Mesh
+      if (!mesh.isMesh) return
+      if (/canopy|cockpit/i.test(mesh.parent?.name ?? '') || /canopy|cockpit/i.test(mesh.name)) inner.push(mesh)
+      else if (!Array.isArray(mesh.material)) skins.push(mesh.material as MeshStandardMaterial)
+    })
     asm.extra.push((_rs, cockpit) => {
-      wrap.visible = !cockpit
       for (const o of proceduralBody) o.visible = false
+      for (const m of inner) m.visible = !cockpit
+      for (const s of skins) if (s.side !== (cockpit ? FrontSide : DoubleSide)) s.side = cockpit ? FrontSide : DoubleSide
     })
   })
 }

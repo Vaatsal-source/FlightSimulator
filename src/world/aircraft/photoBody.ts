@@ -5,7 +5,7 @@
  * Loaded once per file and shared; until a model arrives (or if it cannot load) the procedural body shows.
  */
 
-import { Box3, Group, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, SphereGeometry, Vector3, type Material, type Object3D } from 'three'
+import { Box3, DoubleSide, FrontSide, Group, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, SphereGeometry, Vector3, type Material, type Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useGameStore } from '../../state/gameStore'
 import type { JetAssembly } from './jetKit'
@@ -233,8 +233,14 @@ export function attachTransportBody(asm: JetAssembly, cfg: PhotoBodyCfg): void {
     placeNavLights(asm, wrap, cfg.tailZ - cfg.noseZ)
     // The eye sits inside the airframe in the cockpit view; the deck draws its own interior.
     const fold = cfg.gearFold
+    // From the cockpit the eye is inside the fuselage: outside faces only, so the wings and engines show through the side windows.
+    const skins: MeshStandardMaterial[] = []
+    wrap.traverse((o) => {
+      const mesh = o as Mesh
+      if (mesh.isMesh && !Array.isArray(mesh.material)) skins.push(mesh.material as MeshStandardMaterial)
+    })
     asm.extra.push((rs, cockpit) => {
-      wrap.visible = !cockpit
+      for (const s of skins) if (s.side !== (cockpit ? FrontSide : DoubleSide)) s.side = cockpit ? FrontSide : DoubleSide
       for (const o of hidden) o.visible = false
       if (!fold) return
       // Gear: t = 0 down, 1 stowed. The leg shrinks towards its hinge while it swings up and in (or back).

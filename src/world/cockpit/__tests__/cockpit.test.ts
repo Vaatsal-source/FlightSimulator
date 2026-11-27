@@ -165,11 +165,12 @@ describe('buildCockpit', () => {
     const ps = state(SANE, 'a350')
     const controls = { pitch: 0, roll: 0, yaw: 0, throttle: 0 }
     cockpit.update(ps, controls)
+    expect(draws.count).toBeGreaterThan(0)
+    for (let i = 0; i < 20; i++) cockpit.update(ps, controls) // a pass draws a couple of screens per frame, so let it finish
     const afterFirst = draws.count
-    expect(afterFirst).toBeGreaterThan(0)
     cockpit.update(ps, { ...controls, throttle: 0.5 }) // same snapshot: no redraw
     expect(draws.count).toBe(afterFirst)
-    cockpit.update({ ...ps, t: { ...ps.t } }, controls) // new snapshot
+    cockpit.update({ ...ps, t: { ...ps.t } }, controls) // new snapshot starts a new pass
     expect(draws.count).toBeGreaterThan(afterFirst)
     cockpit.dispose()
   })

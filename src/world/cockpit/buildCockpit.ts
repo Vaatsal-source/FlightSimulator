@@ -38,7 +38,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { getAircraft, type AircraftId } from '../../config/aircraftCatalog'
 import type { Ctx, PanelState } from './canvasKit'
 import { cockpitSpecFor, TEXTURE_SIZE } from './cockpitSpec'
-import { drawSixPack } from './dialDraw'
+import { airspeed, altimeter, attitude, drawSixPack, vsi } from './dialDraw'
+import { attachFighterModel, FIGHTER, type FighterModelHandle } from './fighterModel'
 import { drawDed, drawHud, drawMfd, drawMfdAttitude, drawMfdNav } from './fighterDraw'
 import { drawEicas, drawMcp, drawPfd } from './glassDraw'
 
@@ -69,6 +70,7 @@ type Vec = [number, number, number]
 type Draw = (ctx: Ctx, w: number, h: number, ps: PanelState) => void
 
 interface Screen {
+  mesh?: Mesh
   ctx: Ctx | null
   texture: CanvasTexture
   material: MeshBasicMaterial
@@ -110,6 +112,11 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     return o
   }
   const screens: Screen[] = []
+  let disposed = false
+  let fighterHandle: FighterModelHandle | null = null
+  let fighterPanel: Group | null = null
+  let fighterHud: Screen | null = null
+  const mergedMeshes: Mesh[] = []
 
   const std = (color: number, roughness = 0.8, metalness = 0.05): MeshStandardMaterial =>
     track(
@@ -225,6 +232,7 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     screens.push(s)
     const m = mesh(parent, new PlaneGeometry(meters.w, meters.h), material, p, r)
     if (additive) m.renderOrder = 5
+    s.mesh = m
     return s
   }
   /** Another plane showing an existing screen's texture. */
@@ -498,7 +506,7 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
   } else {
     // Fighter: a HUD on posts above a sloped glare-shield, a keypad and data display, three MFDs with bezel
     // buttons, a standby cluster, a tapered tub with canopy bows, rails and a rear-view mirror.
-    addScreen(root, TEXTURE_SIZE.hud, { w: 0.36, h: 0.36 }, [0, 0.03, -0.9], drawHud, [0, 0, 0], true)
+    fighterHud = addScreen(root, TEXTURE_SIZE.hud, { w: 0.36, h: 0.36 }, [0, 0.03, -0.9], drawHud, [0, 0, 0], true)
     glass(0.34, 0.34, [0, 0.03, -0.895], [0, 0, 0]) // combiner glass tint
     // Combiner frame: two tall posts, a top bar and a bottom rail, with the HUD box below.
     for (const sx of [-1, 1]) {
@@ -515,6 +523,7 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     panel.position.set(0, -0.36, -0.7)
     panel.rotation.set(-0.3, 0, 0)
     panel.updateMatrix()
+    fighterPanel = panel
     root.add(panel)
     box(panel, 1.36, 0.42, 0.05, plastic, [0, 0, 0])
     detail(panel, 1.32, 0.4, [0, 0, 0.0252], [0, 0, 0], 34, 9, 13)
@@ -680,25 +689,75 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
     const m = new Mesh(track(merged), mat)
     m.frustumCulled = false
     root.add(m)
+    mergedMeshes.push(m)
   }
   batches.clear()
+
+  // The fighter deck: the cockpit model replaces the box-built tub and panel; everything live stays live and is moved onto it.
+  if (spec.style === 'fighter') {
+    const E = FIGHTER.eye
+    const M = (p: readonly [number, number, number]): Vec => [p[0] - E[0], p[1] - E[1], p[2] - E[2]]
+    const tilt: Vec = [FIGHTER.tilt, 0, 0]
+    /** A small round gauge drawn by one of the dial functions (they draw into a 340 px cell). */
+    const gauge = (fn: (ctx: Ctx, cx: number, cy: number, s: PanelState) => void): Draw => (ctx, w, h, ps) => {
+      ctx.fillStyle = '#0b0d10'
+      ctx.fillRect(0, 0, w, h)
+      fn(ctx, w / 2, h / 2, ps)
+    }
+    fighterHandle = attachFighterModel(root, options.envMap ?? null, () => disposed, () => {
+      for (const m of mergedMeshes) m.visible = false
+      // Every other box-built part (the console switch panels, the glass tint) goes too; the live screens, the stick and the throttle stay.
+      const keep = new Set<Object3D | undefined | null>([stick, ...levers.map((l) => l.mesh), ...screens.map((sc) => sc.mesh)])
+      for (const c of root.children) if (!keep.has(c) && c.name !== 'fighter-cockpit-model') c.visible = false
+      if (fighterPanel) {
+        fighterPanel.visible = false
+        for (let i = screens.length - 1; i >= 0; i--) if (screens[i].mesh?.parent === fighterPanel) screens.splice(i, 1)
+      }
+      if (fighterHud?.mesh) {
+        fighterHud.mesh.position.set(...M(FIGHTER.hud))
+        fighterHud.mesh.scale.setScalar(0.44 / 0.36)
+      }
+      // Live displays over the model's three screens, and four live backup gauges.
+      addScreen(root, TEXTURE_SIZE.mfd, { w: 0.34, h: 0.3 }, M(FIGHTER.mfdLeft), drawMfdAttitude, tilt)
+      addScreen(root, TEXTURE_SIZE.mfd, { w: 0.34, h: 0.3 }, M(FIGHTER.mfdRight), drawMfdNav, tilt)
+      addScreen(root, { w: 400, h: 205 }, { w: 0.39, h: 0.2 }, M(FIGHTER.tactical), drawDed, tilt)
+      const dials = [airspeed, attitude, altimeter, vsi]
+      FIGHTER.gauges.forEach((p, i) => addScreen(root, { w: 340, h: 340 }, { w: 0.104, h: 0.104 }, M(p), gauge(dials[i]), tilt))
+      // The control stick and the throttle are ours (they move with the controls), placed where the model has them.
+      if (stick) stick.position.set(...M(FIGHTER.stick))
+      levers.forEach((l, i) => {
+        const p = M(FIGHTER.throttle[Math.min(i, FIGHTER.throttle.length - 1)])
+        l.mesh.position.set(...p)
+        l.baseZ = p[2]
+        l.travel = 0.5
+      })
+      lastT = null // draw the new screens straight away
+    })
+  }
 
   const level = (v: number): number => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0))
   let lastT: PanelState['t'] | null = null
   let lastDraw = -Infinity
+  let pending = 0
+  let cursor = 0
+  const DRAWS_PER_FRAME = 2
 
   return {
     root,
     update(ps, c) {
-      const now = options.redrawMs ? performance.now() : 0
-      if (ps.t !== lastT && (!options.redrawMs || now - lastDraw >= options.redrawMs)) {
+      // Screens are redrawn a couple per frame in turn, not all together: nine canvas draws and texture uploads in one frame was a visible hitch.
+      const now = performance.now()
+      if (pending === 0 && ps.t !== lastT && (!options.redrawMs || now - lastDraw >= options.redrawMs)) {
         lastT = ps.t
         lastDraw = now
-        for (const s of screens) {
-          if (!s.ctx) continue
-          s.draw(s.ctx, s.w, s.h, ps)
-          s.texture.needsUpdate = true
-        }
+        pending = screens.length
+        cursor = 0
+      }
+      for (let n = 0; n < DRAWS_PER_FRAME && pending > 0; n++, pending--) {
+        const s = screens[cursor++]
+        if (!s?.ctx) continue
+        s.draw(s.ctx, s.w, s.h, ps)
+        s.texture.needsUpdate = true
       }
       const pitch = clamp1(c.pitch)
       const roll = clamp1(c.roll)
@@ -715,6 +774,8 @@ export function buildCockpit(id: AircraftId, options: CockpitOptions = {}): Cock
       for (const l of levers) l.mesh.position.z = l.baseZ - thr * l.travel
     },
     dispose() {
+      disposed = true
+      fighterHandle?.dispose()
       for (const d of disposables) d.dispose()
       disposables.length = 0
       screens.length = 0

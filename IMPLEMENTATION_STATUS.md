@@ -199,3 +199,12 @@ three 0.186.1, @react-three/fiber 9.8.2 (no drei), zustand 5.0.15, Vitest 5.0.5,
 ### Menu redesign and wingtip lights
 - The main menu follows the user's reference: a full-bleed photograph (`public/BackdropImageMenu.jpg`, a screenshot of another product supplied by the user; do not publish it in a public repo or deploy without checking its rights), a logo and tagline, angled buttons down the left (the first in red), and a compact flight-setup panel (aircraft, time, weather, pilot log) on the right. All labels, test ids and the mode-select screen's shared `ready-label` class are unchanged.
 - The navigation lights and strobes of the photographic airliners (`photoBody.ts` `placeNavLights`) are placed at the fitted model's real wingtips and tail instead of the procedural wing's.
+
+### Fighter cockpit model
+- The F-22 deck now uses the user's generated F-16-inspired cockpit (`assets-src/f16-cockpit-bundle`, built into `public/models/f22/cockpit.glb` by `scripts/prepare-fighter-cockpit.mjs`: 392 parts merged into 12 meshes, about 15.7k triangles, 200 kB). The script removes everything that must be live: the model's static display symbology, HUD symbols and combiner, gauge needles, control stick, throttle and the front canopy bow.
+- Live on the model (`world/cockpit/fighterModel.ts`, the fighter branch of `buildCockpit.ts`): the HUD (additive canvas at the model's HUD position), an attitude display and a navigation display on the two MFDs, a data readout on the lower display, four backup gauges (airspeed, attitude, altimeter, vertical speed; behind the glare-shield from the normal eye point), and the stick and throttle (ours, moving with the controls, placed where the model has them). The box-built deck is the fallback if the file cannot load.
+- The eye point is level with the model's HUD (1.8 m up, 0.85 m back in the model's frame): the model's own seat is far below its HUD, and a seat-height eye would look into the glare-shield.
+
+## Latest
+- F-22 canopy: glass bubble plus thin frame bows placed behind the pilot (none ahead of the eye); looking back shows wings, tails and spine.
+- GPU cost: terrain and sky value-noise now read one baked, tileable texture (`src/world/environment/noiseTexture.ts`) instead of per-pixel hashing. Not measured on real hardware yet (needs F3 numbers from an Iris Xe machine).
